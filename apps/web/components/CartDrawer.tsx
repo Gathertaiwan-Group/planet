@@ -6,6 +6,7 @@ import { GOLD_ORB, nt, orb, PAYMENT_OPTIONS, SHIPPING_OPTIONS, type OrderItemInp
 import { createOrder } from "@/app/actions";
 import { cartTotal, useStore } from "@/lib/store";
 import { sx } from "@/lib/sx";
+import { FramedImage } from "./ProductImage";
 import { useOverlay } from "./useOverlay";
 
 const label = sx("display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0");
@@ -90,7 +91,18 @@ export function CartDrawer() {
               {cart.length === 0 && <span style={sx("color:#aeb0c6;font-size:16px;padding:24px 0")}>購物車空空的，去領養一隻寶寶吧。</span>}
               {cart.map((c) => (
                 <div key={c.id} style={sx("display:flex;gap:14px;align-items:center;background:#19213f;border-radius:18px;padding:14px")}>
-                  <span aria-hidden="true" style={sx("flex:0 0 44px;height:44px;border-radius:50%", { background: orb(c.hue) })} />
+                  {c.image ? (
+                    <span aria-hidden="true" style={sx("position:relative;flex:0 0 44px;width:44px;height:44px")}>
+                      <span style={sx("position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#e9e9ee")}>
+                        <FramedImage src={c.image} alt="" sizes={(z) => `${Math.round(44 * z)}px`} variant="thumb" />
+                      </span>
+                      {c.kind === "baby" && (
+                        <span style={sx("position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;border:2px solid #19213f", { background: orb(c.hue) })} />
+                      )}
+                    </span>
+                  ) : (
+                    <span aria-hidden="true" style={sx("flex:0 0 44px;height:44px;border-radius:50%", { background: orb(c.hue) })} />
+                  )}
                   <div style={sx("flex:1;display:flex;flex-direction:column;gap:3px;min-width:0")}>
                     <span style={sx("font-size:15px;font-weight:600")}>{c.name}</span>
                     <span style={sx("font-size:13px;color:#aeb0c6")}>{c.sub}</span>

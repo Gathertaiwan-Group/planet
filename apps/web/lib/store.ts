@@ -15,6 +15,8 @@ export interface CartItem {
   sub: string;
   price: number;
   hue: number;
+  /** 植栽／周邊照片（舊版購物車沒有此欄，會 fallback 成星球球） */
+  image?: string | null;
   qty: number;
 }
 

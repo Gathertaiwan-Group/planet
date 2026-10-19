@@ -3,9 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { glow, nt, orb, type Planet, type Plant, type Product } from "@planet/shared";
 import { useStore } from "@/lib/store";
+import { CrossfadeImage, FramedImage } from "./ProductImage";
 import { sx } from "@/lib/sx";
 
 const stripes = "repeating-linear-gradient(135deg,#1d2649 0 12px,#222b4f 12px 24px)";
+// 預覽卡：桌機兩欄時卡片內寬約 526px；單欄（<908px）時 = 100vw − 左右內距
+const previewSizes = (z: number) => `(max-width: 908px) calc((100vw - 74px) * ${z}), ${Math.round(526 * z)}px`;
+const extraSizes = "(max-width: 560px) calc(100vw - 66px), 360px";
+const thumbSizes = (z: number) => `${Math.round(56 * z)}px`;
 
 export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[]; plants: Plant[]; products: Product[]; kitPrice: number }) {
   const hydrated = useStore((s) => s.hydrated);
@@ -55,7 +60,7 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
   };
 
   const addBuild = () => {
-    addItem({ id: `b-${bp.id}-${pl.id}`, kind: "baby", planetId: bp.id, plantId: pl.id, name: `${bp.name}寶寶`, sub: `${pl.name} × ${bp.kit_name}`, price: pl.price_twd + kitPrice, hue: bp.hue });
+    addItem({ id: `b-${bp.id}-${pl.id}`, kind: "baby", planetId: bp.id, plantId: pl.id, name: `${bp.name}寶寶`, sub: `${pl.name} × ${bp.kit_name}`, price: pl.price_twd + kitPrice, hue: bp.hue, image: pl.image_url ?? null });
     flash();
   };
 
@@ -114,14 +119,19 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
                     type="button"
                     aria-pressed={on}
                     onClick={() => setPlantIdx(i)}
-                    style={sx("display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:16px;padding:14px 18px;cursor:pointer;color:#f6f0e1;text-align:left", {
+                    style={sx("display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:16px;padding:10px 18px 10px 10px;cursor:pointer;color:#f6f0e1;text-align:left", {
                       background: on ? "#222b4f" : "#19213f",
                       border: `1.5px solid ${on ? "#f0c96e" : "#2a3358"}`,
                     })}
                   >
-                    <span style={sx("display:flex;flex-direction:column;gap:3px")}>
-                      <span style={sx("font-size:16px;font-weight:600")}>{o.name}</span>
-                      <span style={sx("font-size:13px;color:#aeb0c6")}>{o.note}</span>
+                    <span style={sx("display:flex;align-items:center;gap:14px;min-width:0")}>
+                      <span style={sx("position:relative;flex:0 0 56px;width:56px;height:56px;border-radius:14px;overflow:hidden;background:#e9e9ee")}>
+                        <FramedImage src={o.image_url} alt="" sizes={thumbSizes} variant="thumb" />
+                      </span>
+                      <span style={sx("display:flex;flex-direction:column;gap:3px;min-width:0")}>
+                        <span style={sx("font-size:16px;font-weight:600")}>{o.name}</span>
+                        <span style={sx("font-size:13px;color:#aeb0c6")}>{o.note}</span>
+                      </span>
                     </span>
                     <span style={sx("font-size:15px;font-weight:600;color:#f0c96e;white-space:nowrap")}>{nt(o.price_twd)}</span>
                   </button>
@@ -130,12 +140,15 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
             </div>
           </div>
         </div>
-        <div ref={previewRef} style={sx("position:sticky;top:88px;background:#19213f;border:1px solid #2a3358;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:18px")}>
-          <div style={sx("position:relative;aspect-ratio:4/3;border-radius:20px;display:flex;align-items:flex-end;padding:16px", { background: stripes })}>
-            <span aria-hidden="true" style={sx("position:absolute;top:18px;right:18px;width:64px;height:64px;border-radius:50%", { background: orb(bp.hue), boxShadow: `0 0 30px ${glow(bp.hue)}` })} />
-            <span style={sx("font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#cfcbe0;background:#10162e;border-radius:8px;padding:6px 10px")}>
-              產品照：{pl.name} ＋ {bp.kit_name}
-            </span>
+        <div ref={previewRef} id="shop-preview" style={sx("position:sticky;top:88px;background:#19213f;border:1px solid #2a3358;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:18px")}>
+          <div style={sx("position:relative;aspect-ratio:4/3;border-radius:20px;display:flex;align-items:flex-end;padding:16px;overflow:hidden;isolation:isolate", { background: stripes })}>
+            <CrossfadeImage src={pl.image_url} alt={`${pl.name} 燈泡植栽`} sizes={previewSizes} />
+            <span aria-hidden="true" style={sx("position:absolute;top:18px;right:18px;width:64px;height:64px;border-radius:50%;z-index:2", { background: orb(bp.hue), boxShadow: `0 0 30px ${glow(bp.hue)}` })} />
+            {!pl.image_url && (
+              <span style={sx("position:relative;z-index:2;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#cfcbe0;background:#10162e;border-radius:8px;padding:6px 10px")}>
+                產品照：{pl.name} ＋ {bp.kit_name}
+              </span>
+            )}
           </div>
           <div style={sx("display:flex;flex-direction:column;gap:6px")}>
             <span style={sx("font-size:14px;color:#f0c96e;font-weight:600")}>{bp.name}寶寶</span>
@@ -167,8 +180,11 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
         <div style={sx("display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px")}>
           {products.map((x) => (
             <div key={x.sku} style={sx("background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:12px")}>
-              <div style={sx("aspect-ratio:4/3;border-radius:16px;display:flex;align-items:flex-end;padding:12px", { background: stripes })}>
-                <span style={sx("font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#cfcbe0;background:#10162e;border-radius:8px;padding:5px 9px")}>產品照：{x.name}</span>
+              <div style={sx("position:relative;aspect-ratio:4/3;border-radius:16px;display:flex;align-items:flex-end;padding:12px;overflow:hidden", { background: stripes })}>
+                <FramedImage src={x.image_url} alt={x.name} sizes={extraSizes} />
+                {!x.image_url && (
+                  <span style={sx("position:relative;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#cfcbe0;background:#10162e;border-radius:8px;padding:5px 9px")}>產品照：{x.name}</span>
+                )}
               </div>
               <span style={sx("font-size:18px;font-weight:700")}>{x.name}</span>
               <div style={sx("display:flex;justify-content:space-between;align-items:center")}>
@@ -176,7 +192,7 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
                 <button
                   type="button"
                   onClick={() => {
-                    addItem({ id: x.sku, kind: "extra", sku: x.sku, name: x.name, sub: "周邊", price: x.price_twd, hue: 85 });
+                    addItem({ id: x.sku, kind: "extra", sku: x.sku, name: x.name, sub: "周邊", price: x.price_twd, hue: 85, image: x.image_url ?? null });
                     flash();
                   }}
                   aria-label={`加入 ${x.name}`}
@@ -200,7 +216,18 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
           padding: "12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))",
         })}
       >
-        <span aria-hidden="true" style={sx("flex:0 0 40px;height:40px;border-radius:50%", { background: orb(bp.hue), boxShadow: `0 0 18px ${glow(bp.hue)}` })} />
+        <span aria-hidden="true" style={sx("position:relative;flex:0 0 44px;width:44px;height:44px")}>
+          {pl.image_url ? (
+            <>
+              <span style={sx("position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#e9e9ee")}>
+                <FramedImage src={pl.image_url} alt="" sizes={(z) => `${Math.round(44 * z)}px`} variant="thumb" />
+              </span>
+              <span style={sx("position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;border:2px solid #151c38", { background: orb(bp.hue) })} />
+            </>
+          ) : (
+            <span style={sx("position:absolute;inset:0;border-radius:50%", { background: orb(bp.hue), boxShadow: `0 0 18px ${glow(bp.hue)}` })} />
+          )}
+        </span>
         <span style={sx("display:flex;flex-direction:column;gap:2px;min-width:0;flex:1")}>
           <span style={sx("font-size:13px;color:#f0c96e;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>
             {bp.name}寶寶 · {pl.name}

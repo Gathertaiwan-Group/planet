@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@planet/shared"],
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "ozwftlkgqmewtadypsfi.supabase.co", pathname: "/storage/v1/object/public/**" },
+    ],
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
+  },
   async headers() {
     return [
       {

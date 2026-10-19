@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { GOLD_ORB, glow, orb, pad, type Planet } from "@planet/shared";
+import { BRAND_IMAGES, GOLD_ORB, glow, orb, pad, type Planet } from "@planet/shared";
 import { sx } from "@/lib/sx";
 
 const btnPrimary = "background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px 28px;font-size:18px;font-weight:600;cursor:pointer;box-shadow:0 8px 30px rgba(240,201,110,.3);text-decoration:none;display:inline-flex;align-items:center";
@@ -69,8 +70,15 @@ export function HeroStorybook() {
   return (
     <section data-screen-label="Home · 繪本" className="gutter" style={sx("max-width:1240px;margin:0 auto;padding:clamp(32px,6vw,80px) clamp(16px,4vw,40px)")}>
       <div style={sx("display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));background:#f6f0e1;color:#1f2340;border-radius:28px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)")}>
-        <div className="book-illo" style={sx("min-height:420px;background:repeating-linear-gradient(135deg,#ece3cc 0 12px,#e5dbc1 12px 24px);display:flex;align-items:flex-end;padding:24px;border-right:2px solid #e0d4b6")}>
-          <span style={sx("font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#7a6c48;background:#f6f0e1;border-radius:8px;padding:6px 10px")}>插畫：星球寶寶坐在小星球上看夕陽</span>
+        <div className="book-illo" style={sx("position:relative;overflow:hidden;min-height:420px;background:repeating-linear-gradient(135deg,#ece3cc 0 12px,#e5dbc1 12px 24px);display:flex;align-items:flex-end;padding:24px;border-right:2px solid #e0d4b6")}>
+          <Image
+            src={BRAND_IMAGES.bagCharm}
+            alt="掛在包包上的星球寶寶燈泡植栽吊飾"
+            fill
+            priority
+            sizes="(max-width: 908px) calc(100vw - 32px), 600px"
+            style={{ objectFit: "cover", objectPosition: "58% 50%" }}
+          />
         </div>
         <div style={sx("padding:clamp(28px,5vw,64px);display:flex;flex-direction:column;gap:22px")}>
           <span style={sx("font-size:14px;font-weight:600;color:#a0731f;letter-spacing:.08em")}>第一章 · CHAPTER ONE</span>

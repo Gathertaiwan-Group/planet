@@ -1,4 +1,5 @@
 import raw from "./seed.json";
+import { PRODUCT_IMAGE_BASE } from "./images";
 import type { Catalog, EventType, Letter, Planet, PlanetEvent, Plant, Product, QuizQuestion } from "./types";
 
 interface RawSeed {
@@ -30,8 +31,8 @@ export const seedQuestions: QuizQuestion[] = seedRaw.quiz.map((q) => ({
   text: q.text,
   options: q.options.map((o) => ({ ...o, letter: o.letter as Letter })),
 }));
-export const seedPlants: Plant[] = seedRaw.plants.map((p) => ({ ...p, image_url: null }));
-export const seedProducts: Product[] = seedRaw.extras.map((x) => ({ ...x, image_url: null }));
+export const seedPlants: Plant[] = seedRaw.plants.map((p) => ({ ...p, image_url: `${PRODUCT_IMAGE_BASE}plants/${p.id}.jpg` }));
+export const seedProducts: Product[] = seedRaw.extras.map((x) => ({ ...x, image_url: `${PRODUCT_IMAGE_BASE}products/${x.sku}.jpg` }));
 export const seedKitPrice = seedRaw.kit_price_twd;
 
 /** seed 的日期＋時間視為台北時間（+08:00） */
