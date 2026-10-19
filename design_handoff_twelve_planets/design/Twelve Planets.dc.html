@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>十二星球 · 星球寶寶</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#10162e;color:#f6f0e1;font-family:'Fredoka','Noto Sans TC',sans-serif;text-wrap:pretty;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#f0c96e;text-underline-offset:3px}
+a:hover{color:#f7d88f}
+button{font-family:inherit}
+input,textarea,select{font-family:inherit;font-size:16px}
+:focus-visible{outline:2px solid #f0c96e;outline-offset:3px}
+::selection{background:#f0c96e;color:#10162e}
+@keyframes twinkle{0%,100%{opacity:.35}50%{opacity:1}}
+@media (max-width:720px){[data-cart]{margin-left:auto!important}[data-nav]{order:3!important;flex:1 1 100%!important;justify-content:flex-start!important}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#10162e;background-image:radial-gradient(1.5px 1.5px at 12% 18%,#f6f0e1 50%,transparent 52%),radial-gradient(1px 1px at 78% 9%,#f6f0e1 50%,transparent 52%),radial-gradient(1.5px 1.5px at 64% 42%,#f0c96e 50%,transparent 52%),radial-gradient(1px 1px at 33% 71%,#f6f0e1 50%,transparent 52%),radial-gradient(1px 1px at 90% 63%,#f6f0e1 50%,transparent 52%),radial-gradient(1.5px 1.5px at 6% 88%,#f0c96e 50%,transparent 52%);background-size:640px 640px">
+
+<header style="position:sticky;top:0;z-index:20;background:rgba(16,22,46,.86);backdrop-filter:blur(10px);border-bottom:1px solid #2a3358">
+  <div style="max-width:1240px;margin:0 auto;padding:12px clamp(16px,4vw,40px);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <button onClick="{{ go.home }}" style="display:flex;align-items:center;gap:10px;background:none;border:0;padding:4px 0;cursor:pointer;color:#f6f0e1">
+      <span style="width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff3c9,#f0c96e 45%,#b9862e);box-shadow:0 0 18px rgba(240,201,110,.5);display:block"></span>
+      <span style="font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-weight:700;font-size:21px">十二星球</span>
+    </button>
+    <nav data-nav="1" style="order:1;flex:1 1 auto;min-width:0;justify-content:flex-end;display:flex;gap:2px;overflow-x:auto;align-items:center;max-width:100%;white-space:nowrap;scrollbar-width:none">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <button onClick="{{ n.onClick }}" style="background:{{ n.bg }};border:0;border-radius:999px;padding:8px 14px;font-size:15px;font-weight:500;cursor:pointer;color:{{ n.color }}" style-hover="color:#f0c96e">{{ n.label }}</button>
+      </sc-for>
+    </nav>
+    <button onClick="{{ openCart }}" data-cart="1" style="order:2;margin-left:12px;flex:0 0 auto;display:flex;align-items:center;gap:8px;background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:9px 16px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:#f7d88f">購物車<span style="min-width:22px;height:22px;border-radius:999px;background:#10162e;color:#f0c96e;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0 6px">{{ cartCount }}</span></button>
+  </div>
+</header>
+
+<main style="flex:1">
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+
+  <sc-if value="{{ heroOrbit }}" hint-placeholder-val="{{ true }}">
+  <section data-screen-label="Home · 星軌" style="max-width:1240px;margin:0 auto;padding:clamp(40px,7vw,96px) clamp(16px,4vw,40px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:48px;align-items:center">
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <span style="align-self:flex-start;font-size:14px;font-weight:500;color:#f0c96e;border:1px solid #4a4a5e;border-radius:999px;padding:6px 14px">✦ 2 分鐘測驗 · 每月線下聚會</span>
+      <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-weight:700;font-size:clamp(42px,6vw,76px);line-height:1.18">每個人，<br>都是從一顆<span style="color:#f0c96e">小星球</span><br>來的。</h1>
+      <p style="margin:0;font-size:18px;line-height:1.75;color:#cfcbe0;max-width:30em">測測看你是哪顆星的人，領養專屬你的星球寶寶，然後帶著它出來玩。生活卡關？聚會現場，換別的星球幫你想。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button onClick="{{ go.quiz }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px 28px;font-size:18px;font-weight:600;cursor:pointer;box-shadow:0 8px 30px rgba(240,201,110,.3)" style-hover="background:#f7d88f">開始測驗 →</button>
+        <button onClick="{{ go.events }}" style="background:transparent;color:#f6f0e1;border:1.5px solid #4c5684;border-radius:999px;padding:15px 24px;font-size:18px;font-weight:500;cursor:pointer" style-hover="border-color:#f0c96e;color:#f0c96e">近期聚會</button>
+      </div>
+    </div>
+    <div style="position:relative;width:100%;max-width:560px;justify-self:center;aspect-ratio:1">
+      <div style="position:absolute;inset:8%;border-radius:50%;border:1px dashed #3d4672"></div>
+      <div style="position:absolute;inset:26%;border-radius:50%;border:1px dashed #2f375e"></div>
+      <div style="position:absolute;left:34%;top:34%;width:32%;height:32%;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff3c9,#f0c96e 45%,#a8792a);box-shadow:0 0 60px rgba(240,201,110,.45);display:flex;align-items:center;justify-content:center;flex-direction:column;color:#3a2a0a">
+        <span style="font-family:'LXGW WenKai TC',serif;font-size:clamp(12px,2.2vw,22px);font-weight:700">你的星球</span>
+        <span style="font-size:clamp(16px,3.2vw,34px);font-weight:700">？</span>
+      </div>
+      <sc-for list="{{ planets }}" as="p" hint-placeholder-count="12">
+        <button onClick="{{ p.open }}" title="{{ p.name }}" style="position:absolute;left:{{ p.x }};top:{{ p.y }};width:{{ p.size }};transform:translate(-50%,-50%);background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:#f6f0e1" style-hover="color:#f0c96e">
+          <span style="display:block;width:100%;aspect-ratio:1;border-radius:50%;background:{{ p.orb }};box-shadow:0 0 22px {{ p.glow }}"></span>
+          <span style="font-size:13px;font-weight:500;white-space:nowrap">{{ p.name }}</span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+  </sc-if>
+
+  <sc-if value="{{ heroBook }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="Home · 繪本" style="max-width:1240px;margin:0 auto;padding:clamp(32px,6vw,80px) clamp(16px,4vw,40px)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));background:#f6f0e1;color:#1f2340;border-radius:28px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)">
+      <div style="min-height:420px;background:repeating-linear-gradient(135deg,#ece3cc 0 12px,#e5dbc1 12px 24px);display:flex;align-items:flex-end;padding:24px;border-right:2px solid #e0d4b6">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#7a6c48;background:#f6f0e1;border-radius:8px;padding:6px 10px">插畫：星球寶寶坐在小星球上看夕陽</span>
+      </div>
+      <div style="padding:clamp(28px,5vw,64px);display:flex;flex-direction:column;gap:22px">
+        <span style="font-size:14px;font-weight:600;color:#a0731f;letter-spacing:.08em">第一章 · CHAPTER ONE</span>
+        <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-weight:700;font-size:clamp(36px,4.6vw,60px);line-height:1.22">從前從前，<br>宇宙裡有 12 顆小星球。</h1>
+        <p style="margin:0;font-size:18px;line-height:1.85;color:#454a6b">每顆星球住著不同個性的人：有的很會聽、有的很會衝、有的腦洞超大。你也是其中一顆星來的——要不要翻到下一頁，看看是哪一顆？</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+          <button onClick="{{ go.quiz }}" style="background:#1f2340;color:#f0c96e;border:0;border-radius:999px;padding:16px 28px;font-size:18px;font-weight:600;cursor:pointer" style-hover="background:#2d3360">翻到下一頁：開始測驗 →</button>
+          <button onClick="{{ go.planets }}" style="background:transparent;color:#1f2340;border:1.5px solid #1f2340;border-radius:999px;padding:15px 22px;font-size:17px;font-weight:500;cursor:pointer" style-hover="background:#ece3cc">先看 12 顆星球</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+
+  <sc-if value="{{ heroRow }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="Home · 星球列車" style="padding:clamp(48px,8vw,104px) 0 clamp(32px,5vw,64px)">
+    <div style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:22px;align-items:center;text-align:center">
+      <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-weight:700;font-size:clamp(42px,6.4vw,84px);line-height:1.16">嘿，你是<span style="color:#f0c96e">哪顆星</span>的？</h1>
+      <p style="margin:0;font-size:18px;line-height:1.75;color:#cfcbe0;max-width:32em">8 題測驗，把你分配到 12 顆星球之一。每顆星都有自己的超能力，也有自己的小卡關——所以我們才要聚在一起。</p>
+      <button onClick="{{ go.quiz }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px 30px;font-size:18px;font-weight:600;cursor:pointer;box-shadow:0 8px 30px rgba(240,201,110,.3)" style-hover="background:#f7d88f">測出我的星球 →</button>
+    </div>
+    <div style="margin-top:48px;display:flex;gap:16px;overflow-x:auto;padding:12px clamp(16px,4vw,40px) 24px;scroll-snap-type:x mandatory">
+      <sc-for list="{{ planets }}" as="p" hint-placeholder-count="12">
+        <button onClick="{{ p.open }}" style="flex:0 0 200px;scroll-snap-align:start;background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:22px 18px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;cursor:pointer;color:#f6f0e1;text-align:left" style-hover="border-color:#f0c96e">
+          <span style="font-size:13px;color:#aeb0c6">{{ p.no }} · {{ p.en }}</span>
+          <span style="display:block;width:96px;height:96px;border-radius:50%;background:{{ p.orb }};box-shadow:0 0 26px {{ p.glow }};align-self:center;margin:6px 0"></span>
+          <span style="font-family:'LXGW WenKai TC',serif;font-size:22px;font-weight:700">{{ p.name }}</span>
+          <span style="font-size:14px;color:#cfcbe0">{{ p.key }}</span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+  </sc-if>
+
+  <section style="max-width:1240px;margin:0 auto;padding:clamp(32px,5vw,64px) clamp(16px,4vw,40px)">
+    <h2 style="margin:0 0 28px;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(28px,3.4vw,40px);font-weight:700">三步，加入星球派對</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+      <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:40px;font-weight:700;color:#f0c96e">01</span>
+        <span style="font-size:20px;font-weight:700">做測驗，找到星球</span>
+        <span style="font-size:16px;line-height:1.7;color:#cfcbe0">8 題小問題，看看你的個性住在哪顆星。</span>
+      </div>
+      <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:40px;font-weight:700;color:#f0c96e">02</span>
+        <span style="font-size:20px;font-weight:700">領養星球寶寶</span>
+        <span style="font-size:16px;line-height:1.7;color:#cfcbe0">挑一株喜歡的燈泡植栽，配上你星球專屬的造型。</span>
+      </div>
+      <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:40px;font-weight:700;color:#f0c96e">03</span>
+        <span style="font-size:20px;font-weight:700">帶著寶寶來聚會</span>
+        <span style="font-size:16px;line-height:1.7;color:#cfcbe0">同星球的人互相打氣，不同星球的人幫你解卡關。</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1240px;margin:0 auto;padding:clamp(16px,3vw,32px) clamp(16px,4vw,40px) clamp(48px,7vw,96px)">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px">
+      <h2 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(28px,3.4vw,40px);font-weight:700">近期聚會</h2>
+      <button onClick="{{ go.events }}" style="background:none;border:0;color:#f0c96e;font-size:16px;font-weight:500;cursor:pointer;padding:6px 0">全部活動 →</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+      <sc-for list="{{ homeEvents }}" as="e" hint-placeholder-count="3">
+        <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <span style="font-size:15px;font-weight:600;color:#f0c96e">{{ e.dateText }}</span>
+            <span style="font-size:13px;font-weight:600;border-radius:999px;padding:4px 10px;background:{{ e.tagBg }};color:{{ e.tagColor }}">{{ e.typeLabel }}</span>
+          </div>
+          <span style="font-size:21px;font-weight:700;line-height:1.35">{{ e.title }}</span>
+          <span style="font-size:15px;color:#cfcbe0">{{ e.city }} · {{ e.time }}</span>
+          <button onClick="{{ e.onReg }}" style="margin-top:auto;align-self:flex-start;background:{{ e.btnBg }};color:{{ e.btnColor }};border:0;border-radius:999px;padding:11px 20px;font-size:15px;font-weight:600;cursor:pointer">{{ e.btnLabel }}</button>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isQuiz }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="Quiz" style="max-width:760px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <button onClick="{{ quizBack }}" style="background:none;border:0;color:#aeb0c6;font-size:15px;cursor:pointer;padding:6px 0" style-hover="color:#f0c96e">← {{ backLabel }}</button>
+      <span style="font-size:15px;font-weight:600;color:#f0c96e">{{ qLabel }}</span>
+    </div>
+    <div style="height:8px;border-radius:999px;background:#222b4f;overflow:hidden">
+      <div style="height:100%;width:{{ qPct }};background:#f0c96e;border-radius:999px;transition:width .3s"></div>
+    </div>
+    <h2 style="margin:12px 0 0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(30px,4.6vw,46px);line-height:1.3;font-weight:700">{{ q.text }}</h2>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ qOpts }}" as="o" hint-placeholder-count="4">
+        <button onClick="{{ o.onClick }}" style="display:flex;align-items:center;gap:16px;width:100%;text-align:left;background:{{ o.bg }};color:{{ o.color }};border:1.5px solid {{ o.border }};border-radius:20px;padding:18px 20px;font-size:18px;font-weight:500;cursor:pointer" style-hover="border-color:#f0c96e">
+          <span style="flex:0 0 36px;height:36px;border-radius:50%;background:#2a3358;color:#f0c96e;display:flex;align-items:center;justify-content:center;font-weight:700">{{ o.letter }}</span>
+          <span>{{ o.text }}</span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isResult }}" hint-placeholder-val="{{ false }}">
+  <sc-if value="{{ noResult }}" hint-placeholder-val="{{ false }}">
+    <section style="max-width:640px;margin:0 auto;padding:96px clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:20px;align-items:flex-start">
+      <h2 style="margin:0;font-family:'LXGW WenKai TC',serif;font-size:40px">你還沒有星球喔</h2>
+      <p style="margin:0;font-size:18px;color:#cfcbe0">先做個 2 分鐘的測驗吧。</p>
+      <button onClick="{{ go.quiz }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px 28px;font-size:18px;font-weight:600;cursor:pointer">開始測驗 →</button>
+    </section>
+  </sc-if>
+  <sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="Result" style="max-width:1240px;margin:0 auto;padding:clamp(32px,6vw,80px) clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:40px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:40px;align-items:center">
+        <div style="display:flex;justify-content:center">
+          <div style="width:min(80vw,380px);aspect-ratio:1;border-radius:50%;background:{{ res.orb }};box-shadow:0 0 90px {{ res.glow }};animation:floaty 5s ease-in-out infinite"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <span style="font-size:15px;font-weight:600;color:#f0c96e">測驗結果 · 你來自 {{ res.no }} 號星球</span>
+          <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(56px,8vw,104px);line-height:1.05;font-weight:700">{{ res.name }}</h1>
+          <span style="font-size:22px;font-weight:600">{{ res.en }} · {{ res.key }}</span>
+          <p style="margin:0;font-size:18px;line-height:1.8;color:#cfcbe0;max-width:32em">{{ res.desc }}</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+            <button onClick="{{ goShopMine }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:15px 26px;font-size:17px;font-weight:600;cursor:pointer" style-hover="background:#f7d88f">領養我的星球寶寶 →</button>
+            <button onClick="{{ go.quiz }}" style="background:transparent;color:#f6f0e1;border:1.5px solid #4c5684;border-radius:999px;padding:14px 22px;font-size:17px;cursor:pointer" style-hover="border-color:#f0c96e">再測一次</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+        <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:15px;font-weight:600;color:#f0c96e">你的超能力</span>
+          <sc-for list="{{ res.strList }}" as="s" hint-placeholder-count="3">
+            <span style="font-size:18px;font-weight:600">✦ {{ s.t }}</span>
+          </sc-for>
+        </div>
+        <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:15px;font-weight:600;color:#f2a99a">你的小卡關</span>
+          <span style="font-size:18px;line-height:1.7">{{ res.weak }}</span>
+        </div>
+        <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:15px;font-weight:600;color:#9fd8c4">聚會時，你最會</span>
+          <span style="font-size:18px;line-height:1.7">{{ res.meet }}</span>
+        </div>
+      </div>
+      <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:clamp(22px,3vw,32px);display:flex;flex-direction:column;gap:18px">
+        <span style="font-size:20px;font-weight:700">卡關時，可以找這兩顆星球聊聊</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px">
+          <sc-for list="{{ res.helpers }}" as="h" hint-placeholder-count="2">
+            <button onClick="{{ h.open }}" style="display:flex;align-items:center;gap:16px;background:#222b4f;border:0;border-radius:18px;padding:16px;cursor:pointer;color:#f6f0e1;text-align:left" style-hover="background:#2a3358">
+              <span style="flex:0 0 52px;height:52px;border-radius:50%;background:{{ h.orb }}"></span>
+              <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:18px;font-weight:700">{{ h.name }}</span><span style="font-size:14px;color:#cfcbe0">{{ h.key }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{ isPlanets }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="Planets" style="max-width:1240px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:32px">
+    <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(36px,5vw,60px);font-weight:700">12 顆星球</h1>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:28px;align-items:start">
+      <div style="background:#19213f;border:1px solid #2a3358;border-radius:28px;padding:clamp(24px,3vw,36px);display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:20px">
+          <span style="flex:0 0 112px;height:112px;border-radius:50%;background:{{ cur.orb }};box-shadow:0 0 40px {{ cur.glow }}"></span>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:14px;color:#aeb0c6">{{ cur.no }} · {{ cur.en }}</span>
+            <span style="font-family:'LXGW WenKai TC',serif;font-size:38px;font-weight:700">{{ cur.name }}</span>
+            <span style="font-size:17px;font-weight:600;color:#f0c96e">{{ cur.key }}</span>
+          </div>
+        </div>
+        <p style="margin:0;font-size:17px;line-height:1.8;color:#cfcbe0">{{ cur.desc }}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ cur.strList }}" as="s" hint-placeholder-count="3">
+            <span style="font-size:14px;font-weight:600;background:#2a3358;border-radius:999px;padding:6px 12px">{{ s.t }}</span>
+          </sc-for>
+        </div>
+        <span style="font-size:16px;line-height:1.7"><span style="color:#f2a99a;font-weight:600">小卡關：</span>{{ cur.weak }}</span>
+        <span style="font-size:16px;line-height:1.7"><span style="color:#9fd8c4;font-weight:600">專屬造型：</span>{{ cur.kit }}</span>
+        <button onClick="{{ cur.shop }}" style="align-self:flex-start;background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:13px 22px;font-size:16px;font-weight:600;cursor:pointer" style-hover="background:#f7d88f">領養{{ cur.name }}寶寶 →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px">
+        <sc-for list="{{ planets }}" as="p" hint-placeholder-count="12">
+          <button onClick="{{ p.select }}" style="background:{{ p.cellBg }};border:1.5px solid {{ p.cellBorder }};border-radius:20px;padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;color:#f6f0e1" style-hover="border-color:#f0c96e">
+            <span style="width:60px;height:60px;border-radius:50%;background:{{ p.orb }};display:block"></span>
+            <span style="font-size:16px;font-weight:700">{{ p.name }}</span>
+            <span style="font-size:12px;color:#f0c96e;min-height:14px">{{ p.mine }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="Events" style="max-width:1100px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(36px,5vw,60px);font-weight:700">線下聚會</h1>
+      <p style="margin:0;font-size:17px;line-height:1.75;color:#cfcbe0;max-width:36em">同星球場：跟懂你的人互相打氣。跨星球場：每桌混搭不同星球，帶著你的卡關來，現場換個腦袋幫你想。記得帶星球寶寶！</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <sc-for list="{{ evFilters }}" as="f" hint-placeholder-count="4">
+        <button onClick="{{ f.onClick }}" style="background:{{ f.bg }};color:{{ f.color }};border:1.5px solid #3d4672;border-radius:999px;padding:9px 18px;font-size:15px;font-weight:600;cursor:pointer">{{ f.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ events }}" as="e" hint-placeholder-count="5">
+        <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+          <div style="flex:0 0 84px;width:84px;height:84px;border-radius:20px;background:#222b4f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+            <span style="font-size:13px;color:#aeb0c6">{{ e.mon }}</span>
+            <span style="font-size:32px;font-weight:700;color:#f0c96e;line-height:1">{{ e.day }}</span>
+            <span style="font-size:12px;color:#aeb0c6">{{ e.dow }}</span>
+          </div>
+          <div style="flex:1 1 260px;display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span style="font-size:13px;font-weight:600;border-radius:999px;padding:4px 10px;background:{{ e.tagBg }};color:{{ e.tagColor }}">{{ e.typeLabel }}</span>
+              <span style="font-size:14px;color:#aeb0c6">{{ e.city }} · {{ e.time }}</span>
+            </div>
+            <span style="font-size:20px;font-weight:700;line-height:1.35">{{ e.title }}</span>
+            <span style="font-size:15px;line-height:1.6;color:#cfcbe0">{{ e.desc }}</span>
+          </div>
+          <div style="flex:1 0 auto;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:flex-end">
+            <span style="font-size:17px;font-weight:600">{{ e.priceText }}</span>
+            <span style="font-size:13px;color:{{ e.seatColor }}">{{ e.seatText }}</span>
+            <button onClick="{{ e.onReg }}" style="background:{{ e.btnBg }};color:{{ e.btnColor }};border:0;border-radius:999px;padding:11px 20px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">{{ e.btnLabel }}</button>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isShop }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="Shop" style="max-width:1240px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:32px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h1 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:clamp(36px,5vw,60px);font-weight:700">領養星球寶寶</h1>
+      <p style="margin:0;font-size:17px;color:#cfcbe0">植栽你挑，造型由星球決定。</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:28px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:28px">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:18px;font-weight:700"><span style="color:#f0c96e">1</span> 選星球造型</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px">
+            <sc-for list="{{ kitOpts }}" as="k" hint-placeholder-count="12">
+              <button onClick="{{ k.onClick }}" style="background:{{ k.bg }};border:1.5px solid {{ k.border }};border-radius:18px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;color:#f6f0e1">
+                <span style="width:40px;height:40px;border-radius:50%;background:{{ k.orb }};display:block"></span>
+                <span style="font-size:14px;font-weight:600">{{ k.name }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:18px;font-weight:700"><span style="color:#f0c96e">2</span> 選你的植栽</span>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ plantOpts }}" as="o" hint-placeholder-count="7">
+              <button onClick="{{ o.onClick }}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:{{ o.bg }};border:1.5px solid {{ o.border }};border-radius:16px;padding:14px 18px;cursor:pointer;color:#f6f0e1;text-align:left">
+                <span style="display:flex;flex-direction:column;gap:3px"><span style="font-size:16px;font-weight:600">{{ o.name }}</span><span style="font-size:13px;color:#aeb0c6">{{ o.note }}</span></span>
+                <span style="font-size:15px;font-weight:600;color:#f0c96e">{{ o.priceText }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="position:sticky;top:88px;background:#19213f;border:1px solid #2a3358;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:18px">
+        <div style="position:relative;aspect-ratio:4/3;border-radius:20px;background:repeating-linear-gradient(135deg,#1d2649 0 12px,#222b4f 12px 24px);display:flex;align-items:flex-end;padding:16px">
+          <span style="position:absolute;top:18px;right:18px;width:64px;height:64px;border-radius:50%;background:{{ build.orb }};box-shadow:0 0 30px {{ build.glow }}"></span>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#cfcbe0;background:#10162e;border-radius:8px;padding:6px 10px">產品照：{{ build.plant }} ＋ {{ build.kit }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:14px;color:#f0c96e;font-weight:600">{{ build.planet }}寶寶</span>
+          <span style="font-size:24px;font-weight:700">{{ build.plant }} × {{ build.kit }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:15px;color:#cfcbe0;border-top:1px solid #2a3358;padding-top:14px">
+          <div style="display:flex;justify-content:space-between"><span>{{ build.plant }}</span><span>{{ build.plantPrice }}</span></div>
+          <div style="display:flex;justify-content:space-between"><span>{{ build.kit }}</span><span>{{ build.kitPrice }}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700;color:#f6f0e1;margin-top:6px"><span>合計</span><span>{{ build.total }}</span></div>
+        </div>
+        <button onClick="{{ addBuild }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px;font-size:17px;font-weight:600;cursor:pointer" style-hover="background:#f7d88f">{{ addLabel }}</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <h2 style="margin:0;font-family:'LXGW WenKai TC','Noto Sans TC',serif;font-size:30px">寶寶周邊</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+        <sc-for list="{{ extras }}" as="x" hint-placeholder-count="3">
+          <div style="background:#19213f;border:1px solid #2a3358;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="aspect-ratio:4/3;border-radius:16px;background:repeating-linear-gradient(135deg,#1d2649 0 12px,#222b4f 12px 24px);display:flex;align-items:flex-end;padding:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#cfcbe0;background:#10162e;border-radius:8px;padding:5px 9px">產品照：{{ x.name }}</span></div>
+            <span style="font-size:18px;font-weight:700">{{ x.name }}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px;font-weight:600;color:#f0c96e">{{ x.priceText }}</span><button onClick="{{ x.onAdd }}" style="background:#2a3358;color:#f6f0e1;border:0;border-radius:999px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:#f0c96e;color:#10162e">加入</button></div>
+          </div>
+        </sc-for>
+      </div>
+      <span style="font-size:13px;color:#8e90a8">＊價格為示意，請依實際定價調整。</span>
+    </div>
+  </section>
+</sc-if>
+
+</main>
+
+<footer style="border-top:1px solid #2a3358">
+  <div style="max-width:1240px;margin:0 auto;padding:28px clamp(16px,4vw,40px);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:14px;color:#aeb0c6">
+    <span>十二星球 · 星球寶寶由芯宸農業燈泡植栽培育</span>
+    <span>LINE · Instagram · Facebook</span>
+  </div>
+</footer>
+
+<sc-if value="{{ cartOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end">
+    <div onClick="{{ closeCart }}" style="position:absolute;inset:0;background:rgba(5,8,20,.6)"></div>
+    <aside style="position:relative;width:min(440px,100%);height:100%;background:#151c38;border-left:1px solid #2a3358;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #2a3358">
+        <span style="font-size:20px;font-weight:700">{{ cartTitle }}</span>
+        <button onClick="{{ closeCart }}" style="background:#222b4f;color:#f6f0e1;border:0;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <sc-if value="{{ stepCart }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;overflow:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px">
+          <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}"><span style="color:#aeb0c6;font-size:16px;padding:24px 0">購物車空空的，去領養一隻寶寶吧。</span></sc-if>
+          <sc-for list="{{ cartItems }}" as="c" hint-placeholder-count="2">
+            <div style="display:flex;gap:14px;align-items:center;background:#19213f;border-radius:18px;padding:14px">
+              <span style="flex:0 0 44px;height:44px;border-radius:50%;background:{{ c.orb }}"></span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px;font-weight:600">{{ c.name }}</span><span style="font-size:13px;color:#aeb0c6">{{ c.sub }}</span><span style="font-size:14px;color:#f0c96e;font-weight:600">{{ c.priceText }}</span></div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <button onClick="{{ c.dec }}" style="width:32px;height:32px;border-radius:50%;border:0;background:#2a3358;color:#f6f0e1;cursor:pointer;font-size:16px">−</button>
+                <span style="min-width:20px;text-align:center;font-weight:600">{{ c.qty }}</span>
+                <button onClick="{{ c.inc }}" style="width:32px;height:32px;border-radius:50%;border:0;background:#2a3358;color:#f6f0e1;cursor:pointer;font-size:16px">+</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:20px 24px;border-top:1px solid #2a3358;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700"><span>合計</span><span>{{ cartTotal }}</span></div>
+          <button onClick="{{ toCheckout }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px;font-size:17px;font-weight:600;cursor:pointer;opacity:{{ checkoutOpacity }}">前往結帳 →</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ stepForm }}" hint-placeholder-val="{{ false }}">
+        <form onSubmit="{{ submitOrder }}" style="flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">收件人<input required="required" name="name" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">手機<input required="required" name="phone" type="tel" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">取貨方式<select name="ship" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"><option>超商取貨</option><option>宅配到府</option><option>聚會現場取貨</option></select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">付款方式<select name="pay" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"><option>信用卡</option><option>LINE Pay</option><option>ATM 轉帳</option></select></label>
+          <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700;margin-top:auto;padding-top:12px"><span>合計</span><span>{{ cartTotal }}</span></div>
+          <button type="submit" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px;font-size:17px;font-weight:600;cursor:pointer">確認下單</button>
+          <button type="button" onClick="{{ backToCart }}" style="background:none;border:0;color:#aeb0c6;font-size:15px;cursor:pointer">← 回購物車</button>
+        </form>
+      </sc-if>
+      <sc-if value="{{ stepDone }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;padding:40px 24px;display:flex;flex-direction:column;gap:16px;align-items:flex-start">
+          <span style="width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff3c9,#f0c96e 45%,#a8792a);box-shadow:0 0 40px rgba(240,201,110,.5)"></span>
+          <span style="font-family:'LXGW WenKai TC',serif;font-size:30px;font-weight:700">寶寶出發囉！</span>
+          <span style="font-size:16px;line-height:1.7;color:#cfcbe0">訂單已成立，出貨通知會傳到你的手機。現在去報名一場聚會，帶它出門見見朋友吧。</span>
+          <button onClick="{{ doneToEvents }}" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:14px 24px;font-size:16px;font-weight:600;cursor:pointer">看近期聚會 →</button>
+        </div>
+      </sc-if>
+    </aside>
+  </div>
+</sc-if>
+
+<sc-if value="{{ regOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div onClick="{{ closeReg }}" style="position:absolute;inset:0;background:rgba(5,8,20,.65)"></div>
+    <div style="position:relative;width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#151c38;border:1px solid #2a3358;border-radius:28px;padding:clamp(22px,4vw,32px);display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;color:#f0c96e;font-weight:600">{{ regEv.dateText }} · {{ regEv.city }}</span><span style="font-size:22px;font-weight:700;line-height:1.35">{{ regEv.title }}</span></div>
+        <button onClick="{{ closeReg }}" style="flex:0 0 40px;background:#222b4f;color:#f6f0e1;border:0;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <sc-if value="{{ regForm }}" hint-placeholder-val="{{ true }}">
+        <form onSubmit="{{ submitReg }}" style="display:flex;flex-direction:column;gap:14px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">暱稱<input required="required" name="name" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">Email 或手機<input required="required" name="contact" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">我的星球<select name="planet" defaultValue="{{ myPlanetName }}" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1"><option>還沒測驗</option><sc-for list="{{ planets }}" as="p" hint-placeholder-count="12"><option>{{ p.name }}</option></sc-for></select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cfcbe0">最近卡關的事（選填，只有主持人看得到）<textarea name="issue" rows="3" placeholder="例：工作上不知道怎麼拒絕主管…" style="background:#10162e;border:1.5px solid #3d4672;border-radius:14px;padding:13px 14px;color:#f6f0e1;resize:vertical"></textarea></label>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:16px;padding-top:4px"><span style="color:#cfcbe0">報名費</span><span style="font-size:20px;font-weight:700">{{ regEv.priceText }}</span></div>
+          <button type="submit" style="background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px;font-size:17px;font-weight:600;cursor:pointer">確認報名</button>
+        </form>
+      </sc-if>
+      <sc-if value="{{ regDone }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:'LXGW WenKai TC',serif;font-size:28px;font-weight:700">報名成功，到時候見！</span>
+          <span style="font-size:16px;line-height:1.7;color:#cfcbe0">行前通知會在活動前 3 天寄出。別忘了帶你的星球寶寶。</span>
+          <button onClick="{{ closeReg }}" style="align-self:flex-start;background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:13px 24px;font-size:16px;font-weight:600;cursor:pointer">好</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;heroStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;orbit&quot;,&quot;storybook&quot;,&quot;carousel&quot;],&quot;default&quot;:&quot;orbit&quot;,&quot;tsType&quot;:&quot;'orbit'|'storybook'|'carousel'&quot;,&quot;section&quot;:&quot;首頁方向&quot;},&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;quiz&quot;,&quot;result&quot;,&quot;planets&quot;,&quot;events&quot;,&quot;shop&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;預覽&quot;}}">
+const pad = n => String(n).padStart(2, '0');
+const orb = h => `radial-gradient(circle at 32% 28%, oklch(0.96 0.04 ${h}) 0%, oklch(0.8 0.11 ${h}) 40%, oklch(0.5 0.12 ${h}) 100%)`;
+const glow = h => `oklch(0.75 0.12 ${h} / 0.35)`;
+const nt = n => 'NT$ ' + n.toLocaleString();
+const LS = 'twelve-planets-v1';
+const PL = [
+  { name: '火山星', en: 'EMBER', hue: 20, key: '熱血衝鋒隊', desc: '想到就做，點子還沒講完人已經出發。你的能量會傳染，大家看到你就想動起來。', str: ['行動力爆表', '敢說真話', '關鍵時刻扛得住'], weak: '有時候衝太快，忘了等等隊友。', meet: '推還在猶豫的人一把。', kit: '火焰小圍巾', help: [6, 9] },
+  { name: '鐵砧星', en: 'ANVIL', hue: 50, key: '可靠實幹家', desc: '說到做到，交給你的事一定有著落。朋友遇到麻煩，第一個想到的就是你。', str: ['超強執行力', '穩定可靠', '把大問題拆小'], weak: '習慣自己扛，忘了你也可以求救。', meet: '把別人的煩惱拆成能做的下一步。', kit: '小工具腰帶', help: [4, 10] },
+  { name: '晨光星', en: 'DAWN', hue: 80, key: '開朗點火者', desc: '你一走進來，氣氛就亮了。陌生人變朋友只要五分鐘，冷場？不存在的。', str: ['破冰高手', '樂觀感染力', '讓人放鬆'], weak: '不太擅長面對自己的低潮。', meet: '讓第一次來的人自在開口。', kit: '太陽小帽', help: [7, 6] },
+  { name: '燈塔星', en: 'BEACON', hue: 110, key: '暖心守護者', desc: '你總是第一個發現誰落單了。默默照顧大家，是很多人心裡的安全感。', str: ['很會照顧人', '細心觀察', '給人安全感'], weak: '常常把自己排在最後一個。', meet: '接住情緒最低落的那個人。', kit: '星光小提燈', help: [2, 8] },
+  { name: '霧林星', en: 'MIST', hue: 140, key: '腦洞發明家', desc: '你的腦袋像一座起霧的森林，走著走著就會冒出奇怪又好用的點子。', str: ['創意源源不絕', '跳脫框架', '把無聊變有趣'], weak: '點子太多，常常做到一半。', meet: '給卡住的問題一個意想不到的解法。', kit: '蘑菇小帽', help: [9, 1] },
+  { name: '羅盤星', en: 'COMPASS', hue: 170, key: '好奇探險家', desc: '沒去過的地方、沒試過的事，都讓你眼睛發亮。你的人生是一張還在畫的地圖。', str: ['好奇心滿點', '適應力超好', '勇於嘗試'], weak: '對重複的日常容易失去耐心。', meet: '提醒大家「其實還有別條路」。', kit: '探險小背包', help: [11, 9] },
+  { name: '風鈴星', en: 'CHIME', hue: 200, key: '溫柔傾聽者', desc: '別人的情緒你都聽得見，一陣小小的風，就能讓你心有所感。', str: ['共感力強', '很會傾聽', '說話溫柔'], weak: '太容易把別人的心事帶回家。', meet: '讓說話的人覺得被真的聽見。', kit: '風鈴小吊飾', help: [0, 1] },
+  { name: '深海星', en: 'DEEP', hue: 230, key: '安靜觀察家', desc: '話不多，但每句都很有份量。你習慣潛到事情底下，看見別人沒看到的東西。', str: ['洞察力', '冷靜分析', '深度思考'], weak: '想太多的時候，會把自己困在海底。', meet: '幫大家看清楚問題真正的樣子。', kit: '小潛水鏡', help: [2, 5] },
+  { name: '星塵星', en: 'STARDUST', hue: 260, key: '自由靈魂', desc: '你不太在乎別人怎麼定義你。獨處時最有力量，也最懂自己要什麼。', str: ['自我覺察', '獨立', '有自己的風格'], weak: '太獨立了，讓人不知道怎麼靠近你。', meet: '提醒大家「你不必跟別人一樣」。', kit: '星星小斗篷', help: [3, 10] },
+  { name: '沙漏星', en: 'HOURGLASS', hue: 290, key: '精準規劃師', desc: '行事曆是你最好的朋友。什麼時候該做什麼，你心裡都有一張表。', str: ['有條理', '時間管理', '計畫周全'], weak: '計畫被打亂時，會偷偷焦慮。', meet: '幫大家排出真的做得到的計畫。', kit: '懷錶小項鍊', help: [4, 8] },
+  { name: '月橋星', en: 'MOONBRIDGE', hue: 320, key: '人際和事佬', desc: '你像一座月光下的橋，總能把吵架的兩邊重新接起來。', str: ['協調溝通', '換位思考', '讓氣氛變柔軟'], weak: '太想讓大家開心，忘了說自己的意見。', meet: '幫卡在人際關係裡的人找台階。', kit: '彎月小髮夾', help: [0, 7] },
+  { name: '花園星', en: 'GARDEN', hue: 350, key: '耐心培育者', desc: '你相信好事要慢慢長。對人、對植物、對自己，你都願意多等一下。', str: ['有耐心', '溫柔又堅定', '陪伴成長'], weak: '等太久，有時錯過說出口的時機。', meet: '陪大家把小目標慢慢養大。', kit: '小花圈', help: [5, 2] },
+];
+const Q = [
+  { text: '週末突然空出一整天，你會…', o: [['揪一群人出去玩', [2, 0]], ['窩在家追劇看書', [7, 8]], ['去一個沒去過的地方', [5, 4]], ['把房間跟待辦清單整理好', [9, 1]]] },
+  { text: '朋友半夜傳訊息說他好煩，你會…', o: [['先聽他說完，陪著就好', [6, 11]], ['直接幫他想解法', [1, 9]], ['約他明天去吃好吃的', [2, 3]], ['幫他換個角度看事情', [7, 10]]] },
+  { text: '你最喜歡哪一種天氣？', o: [['大太陽！', [2, 0]], ['下雨天', [7, 6]], ['起霧的早晨', [4, 8]], ['有風的傍晚', [5, 10]]] },
+  { text: '在一群人裡，你通常是那個…', o: [['點子王', [4, 5]], ['照顧大家的人', [3, 11]], ['把事情做完的人', [1, 9]], ['讓大家和好的人', [10, 6]]] },
+  { text: '事情搞砸了，你的第一反應是…', o: [['先衝再說，邊做邊修', [0, 5]], ['冷靜想清楚哪裡出錯', [7, 9]], ['找信任的人聊聊', [6, 10]], ['給自己一點獨處時間', [8, 11]]] },
+  { text: '如果要養一株植物，你希望它…', o: [['慢慢長，需要耐心', [11, 3]], ['長得很奇特，很有個性', [4, 8]], ['好照顧，超堅強', [1, 0]], ['漂亮療癒，看了就開心', [6, 2]]] },
+  { text: '朋友最常說你…', o: [['好溫暖', [3, 11]], ['好有想法', [4, 7]], ['好可靠', [1, 3]], ['好自由', [8, 5]]] },
+  { text: '來聚會，你最想帶走什麼？', o: [['一群新朋友', [2, 10]], ['被理解的感覺', [6, 8]], ['實際能用的建議', [9, 1]], ['看事情的新角度', [7, 0]]] },
+];
+const PLANTS = [
+  { name: 'T1 翡翠', note: '圓潤飽滿，新手友善', price: 450 },
+  { name: 'T1 綠鑽', note: '葉片亮綠，很有精神', price: 450 },
+  { name: 'T1 觀音蓮', note: '葉脈像星圖', price: 480 },
+  { name: 'T1 拉威雪蓮', note: '淡淡霜白色', price: 480 },
+  { name: 'T1 小毛氈苔', note: '會抓小蟲的個性派', price: 520 },
+  { name: 'T2 粉紅公主', note: '粉嫩大尺寸', price: 680 },
+  { name: 'T2 正壽', note: '透亮窗面，大尺寸', price: 680 },
+];
+const KIT = 280;
+const EXTRAS = [
+  { id: 'x1', name: '星球寶寶 KELLY 提包', price: 450 },
+  { id: 'x2', name: '木質小桌燈', price: 1280 },
+  { id: 'x3', name: '12 星球水晶貼紙組', price: 150 },
+];
+const EV = [
+  { id: 'e1', mon: 'NOV', m: 11, day: '01', dow: '週六', time: '14:00', city: '台北 · 大安', type: 'cross', title: '跨星球煩惱交換所', desc: '每桌 4 顆不同星球，抽一張煩惱卡，輪流給建議。', price: 350, left: 4 },
+  { id: 'e2', mon: 'NOV', m: 11, day: '08', dow: '週六', time: '19:00', city: '新竹 · 東區', type: 'same', planet: 6, title: '風鈴星之夜：被好好聽見', desc: '同星球的溫柔局，這次換你被聽。', price: 300, left: 7 },
+  { id: 'e3', mon: 'NOV', m: 11, day: '15', dow: '週六', time: '14:00', city: '台中 · 西區', type: 'cross', title: '卡關診所：工作 & 人際', desc: '帶著一件卡住的事來，30 分鐘輪桌，換三種星球的腦袋。', price: 350, left: 9 },
+  { id: 'e4', mon: 'NOV', m: 11, day: '22', dow: '週六', time: '10:30', city: '新北 · 新店', type: 'open', title: '寶寶健檢日：燈泡植栽照護', desc: '植栽師現場幫你的寶寶看狀況，教你換水、補光。', price: 250, left: 15 },
+  { id: 'e5', mon: 'NOV', m: 11, day: '29', dow: '週六', time: '19:30', city: '台北 · 中山', type: 'same', planet: 7, title: '深海星讀書夜', desc: '安靜讀 40 分鐘，再慢慢聊。', price: 300, left: 2 },
+  { id: 'e6', mon: 'DEC', m: 12, day: '06', dow: '週六', time: '14:00', city: '高雄 · 鹽埕', type: 'cross', title: '年末星球大會', desc: '12 顆星球全員集合，一起把今年的卡關留在今年。', price: 450, left: 22 },
+];
+const TYPE = {
+  same: { bg: 'rgba(240,201,110,.16)', color: '#f0c96e' },
+  cross: { bg: 'rgba(242,169,154,.18)', color: '#f2a99a' },
+  open: { bg: 'rgba(159,216,196,.16)', color: '#9fd8c4' },
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) {}
+    const r = typeof s.result === 'number' ? s.result : null;
+    this.state = { page: props.startPage || 'home', qi: 0, ans: [], result: r, sel: r ?? 0, cart: s.cart || [], regs: s.regs || [], cartOpen: false, step: 'cart', regId: null, regDone: false, evFilter: 'all', kitP: r ?? 0, plant: 0, added: false };
+  }
+  componentDidUpdate(pp) {
+    const { result, cart, regs } = this.state;
+    try { localStorage.setItem(LS, JSON.stringify({ result, cart, regs })); } catch (e) {}
+    if (pp.startPage !== this.props.startPage && this.props.startPage) this.go(this.props.startPage);
+  }
+  go(page, extra) { this.setState({ page, ...(extra || {}) }); window.scrollTo(0, 0); }
+  addItem(item) {
+    this.setState(s => {
+      const cart = s.cart.slice(); const i = cart.findIndex(c => c.id === item.id);
+      if (i >= 0) cart[i] = { ...cart[i], qty: cart[i].qty + 1 }; else cart.push({ ...item, qty: 1 });
+      return { cart, added: true };
+    });
+    clearTimeout(this._t); this._t = setTimeout(() => this.setState({ added: false }), 1400);
+  }
+  setQty(id, d) { this.setState(s => ({ cart: s.cart.map(c => c.id === id ? { ...c, qty: c.qty + d } : c).filter(c => c.qty > 0) })); }
+  answer(i) {
+    const ans = this.state.ans.slice(0, this.state.qi); ans[this.state.qi] = i;
+    if (this.state.qi < Q.length - 1) { this.setState({ ans, qi: this.state.qi + 1 }); return; }
+    const score = PL.map(() => 0);
+    ans.forEach((a, qi) => Q[qi].o[a][1].forEach((p, k) => { score[p] += k === 0 ? 2 : 1; }));
+    let best = 0; score.forEach((v, k) => { if (v > score[best]) best = k; });
+    this.go('result', { ans, result: best, sel: best, kitP: best });
+  }
+  ev(e) {
+    const t = TYPE[e.type]; const reg = this.state.regs.includes(e.id);
+    return { ...e, dateText: `${e.m}/${e.day} ${e.dow}`, typeLabel: e.type === 'same' ? `同星球 · ${PL[e.planet].name}` : e.type === 'cross' ? '跨星球' : '所有人', tagBg: t.bg, tagColor: t.color, priceText: nt(e.price), seatText: e.left <= 4 ? `只剩 ${e.left} 位！` : `剩 ${e.left} 位`, seatColor: e.left <= 4 ? '#f2a99a' : '#aeb0c6', btnLabel: reg ? '已報名 ✓' : '報名', btnBg: reg ? '#2a3358' : '#f0c96e', btnColor: reg ? '#9fd8c4' : '#10162e', onReg: () => reg ? null : this.setState({ regId: e.id, regDone: false }) };
+  }
+  detail(i) {
+    const p = PL[i];
+    return { ...p, no: pad(i + 1), orb: orb(p.hue), glow: glow(p.hue), strList: p.str.map(t => ({ t })), helpers: p.help.map(h => ({ name: PL[h].name, key: PL[h].key, orb: orb(PL[h].hue), open: () => this.go('planets', { sel: h }) })), shop: () => this.go('shop', { kitP: i }) };
+  }
+  renderVals() {
+    const s = this.state; const hero = this.props.heroStyle || 'orbit';
+    const nav = [['home', '首頁'], ['quiz', '心理測驗'], ['planets', '12 星球'], ['events', '聚會'], ['shop', '星球寶寶']];
+    if (s.result !== null) nav.splice(2, 0, ['result', '我的星球']);
+    const planets = PL.map((p, i) => {
+      const a = (i * 30 - 90) * Math.PI / 180;
+      return { ...p, no: pad(i + 1), orb: orb(p.hue), glow: glow(p.hue), x: (50 + 42 * Math.cos(a)) + '%', y: (50 + 42 * Math.sin(a)) + '%', size: (i % 3 === 0 ? 13 : i % 3 === 1 ? 10 : 11.5) + '%', open: () => this.go('planets', { sel: i }), select: () => this.setState({ sel: i }), cellBg: s.sel === i ? '#222b4f' : '#19213f', cellBorder: s.sel === i ? '#f0c96e' : '#2a3358', mine: s.result === i ? '你的星球' : '' };
+    });
+    const q = Q[s.qi];
+    const total = s.cart.reduce((n, c) => n + c.price * c.qty, 0);
+    const bp = PL[s.kitP]; const pl = PLANTS[s.plant];
+    const filtered = EV.filter(e => s.evFilter === 'all' || e.type === s.evFilter || (s.evFilter === 'mine' && (e.type !== 'same' || e.planet === s.result)));
+    const regE = EV.find(e => e.id === s.regId);
+    return {
+      navItems: nav.map(([k, l]) => ({ label: l, onClick: () => this.go(k), color: s.page === k ? '#f0c96e' : '#f6f0e1', bg: s.page === k ? '#222b4f' : 'transparent' })),
+      go: { home: () => this.go('home'), quiz: () => this.go('quiz', { qi: 0, ans: [] }), events: () => this.go('events'), planets: () => this.go('planets'), shop: () => this.go('shop') },
+      isHome: s.page === 'home', isQuiz: s.page === 'quiz', isResult: s.page === 'result', isPlanets: s.page === 'planets', isEvents: s.page === 'events', isShop: s.page === 'shop',
+      heroOrbit: hero === 'orbit', heroBook: hero === 'storybook', heroRow: hero === 'carousel',
+      planets, homeEvents: EV.slice(0, 3).map(e => this.ev(e)),
+      q, qLabel: `第 ${s.qi + 1} / ${Q.length} 題`, qPct: ((s.qi + 1) / Q.length * 100) + '%', backLabel: s.qi === 0 ? '回首頁' : '上一題',
+      quizBack: () => s.qi === 0 ? this.go('home') : this.setState({ qi: s.qi - 1 }),
+      qOpts: q.o.map((o, i) => { const on = s.ans[s.qi] === i; return { letter: 'ABCD'[i], text: o[0], onClick: () => this.answer(i), bg: on ? '#f0c96e' : '#19213f', color: on ? '#10162e' : '#f6f0e1', border: on ? '#f0c96e' : '#2a3358' }; }),
+      hasResult: s.result !== null, noResult: s.result === null,
+      res: this.detail(s.result ?? 0), cur: this.detail(s.sel),
+      goShopMine: () => this.go('shop', { kitP: s.result ?? 0 }),
+      evFilters: [['all', '全部'], ['cross', '跨星球'], ['same', '同星球'], ['open', '所有人']].concat(s.result !== null ? [['mine', '適合我的']] : []).map(([k, l]) => ({ label: l, onClick: () => this.setState({ evFilter: k }), bg: s.evFilter === k ? '#f0c96e' : 'transparent', color: s.evFilter === k ? '#10162e' : '#f6f0e1' })),
+      events: filtered.map(e => this.ev(e)),
+      kitOpts: PL.map((p, i) => ({ name: p.name, orb: orb(p.hue), onClick: () => this.setState({ kitP: i }), bg: s.kitP === i ? '#222b4f' : '#19213f', border: s.kitP === i ? '#f0c96e' : '#2a3358' })),
+      plantOpts: PLANTS.map((p, i) => ({ ...p, priceText: nt(p.price), onClick: () => this.setState({ plant: i }), bg: s.plant === i ? '#222b4f' : '#19213f', border: s.plant === i ? '#f0c96e' : '#2a3358' })),
+      build: { planet: bp.name, kit: bp.kit, plant: pl.name, orb: orb(bp.hue), glow: glow(bp.hue), plantPrice: nt(pl.price), kitPrice: nt(KIT), total: nt(pl.price + KIT) },
+      addLabel: s.added ? '已加入購物車 ✓' : '加入購物車',
+      addBuild: () => this.addItem({ id: `b-${s.kitP}-${s.plant}`, name: `${bp.name}寶寶`, sub: `${pl.name} × ${bp.kit}`, price: pl.price + KIT, hue: bp.hue }),
+      extras: EXTRAS.map(x => ({ ...x, priceText: nt(x.price), onAdd: () => this.addItem({ id: x.id, name: x.name, sub: '周邊', price: x.price, hue: 85 }) })),
+      cartCount: s.cart.reduce((n, c) => n + c.qty, 0),
+      openCart: () => this.setState({ cartOpen: true, step: 'cart' }), closeCart: () => this.setState({ cartOpen: false }),
+      cartTitle: s.step === 'form' ? '結帳' : s.step === 'done' ? '完成' : '購物車',
+      stepCart: s.step === 'cart', stepForm: s.step === 'form', stepDone: s.step === 'done', cartEmpty: s.cart.length === 0,
+      cartItems: s.cart.map(c => ({ ...c, orb: orb(c.hue), priceText: nt(c.price * c.qty), inc: () => this.setQty(c.id, 1), dec: () => this.setQty(c.id, -1) })),
+      cartTotal: nt(total), checkoutOpacity: s.cart.length ? 1 : 0.45,
+      toCheckout: () => s.cart.length && this.setState({ step: 'form' }), backToCart: () => this.setState({ step: 'cart' }),
+      submitOrder: e => { e.preventDefault(); this.setState({ step: 'done', cart: [] }); },
+      doneToEvents: () => { this.setState({ cartOpen: false }); this.go('events'); },
+      regOpen: !!regE, regEv: regE ? this.ev(regE) : {}, regForm: !s.regDone, regDone: s.regDone,
+      myPlanetName: s.result !== null ? PL[s.result].name : '還沒測驗',
+      closeReg: () => this.setState({ regId: null, regDone: false }),
+      submitReg: e => { e.preventDefault(); this.setState(st => ({ regDone: true, regs: st.regs.concat(st.regId) })); },
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,655 @@
+{
+  "planets": [
+    {
+      "id": 1,
+      "slug": "ember",
+      "name": "火山星",
+      "en": "EMBER",
+      "hue": 20,
+      "tagline": "熱血衝鋒隊",
+      "description": "想到就做，點子還沒講完人已經出發。你的能量會傳染，大家看到你就想動起來。",
+      "strengths": [
+        "行動力爆表",
+        "敢說真話",
+        "關鍵時刻扛得住"
+      ],
+      "weakness": "有時候衝太快，忘了等等隊友。",
+      "meetup_role": "推還在猶豫的人一把。",
+      "kit_name": "火焰小圍巾",
+      "helper_planet_ids": [
+        7,
+        10
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "anvil",
+      "name": "鐵砧星",
+      "en": "ANVIL",
+      "hue": 50,
+      "tagline": "可靠實幹家",
+      "description": "說到做到，交給你的事一定有著落。朋友遇到麻煩，第一個想到的就是你。",
+      "strengths": [
+        "超強執行力",
+        "穩定可靠",
+        "把大問題拆小"
+      ],
+      "weakness": "習慣自己扛，忘了你也可以求救。",
+      "meetup_role": "把別人的煩惱拆成能做的下一步。",
+      "kit_name": "小工具腰帶",
+      "helper_planet_ids": [
+        5,
+        11
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "dawn",
+      "name": "晨光星",
+      "en": "DAWN",
+      "hue": 80,
+      "tagline": "開朗點火者",
+      "description": "你一走進來，氣氛就亮了。陌生人變朋友只要五分鐘，冷場？不存在的。",
+      "strengths": [
+        "破冰高手",
+        "樂觀感染力",
+        "讓人放鬆"
+      ],
+      "weakness": "不太擅長面對自己的低潮。",
+      "meetup_role": "讓第一次來的人自在開口。",
+      "kit_name": "太陽小帽",
+      "helper_planet_ids": [
+        8,
+        7
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "beacon",
+      "name": "燈塔星",
+      "en": "BEACON",
+      "hue": 110,
+      "tagline": "暖心守護者",
+      "description": "你總是第一個發現誰落單了。默默照顧大家，是很多人心裡的安全感。",
+      "strengths": [
+        "很會照顧人",
+        "細心觀察",
+        "給人安全感"
+      ],
+      "weakness": "常常把自己排在最後一個。",
+      "meetup_role": "接住情緒最低落的那個人。",
+      "kit_name": "星光小提燈",
+      "helper_planet_ids": [
+        3,
+        9
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "mist",
+      "name": "霧林星",
+      "en": "MIST",
+      "hue": 140,
+      "tagline": "腦洞發明家",
+      "description": "你的腦袋像一座起霧的森林，走著走著就會冒出奇怪又好用的點子。",
+      "strengths": [
+        "創意源源不絕",
+        "跳脫框架",
+        "把無聊變有趣"
+      ],
+      "weakness": "點子太多，常常做到一半。",
+      "meetup_role": "給卡住的問題一個意想不到的解法。",
+      "kit_name": "蘑菇小帽",
+      "helper_planet_ids": [
+        10,
+        2
+      ]
+    },
+    {
+      "id": 6,
+      "slug": "compass",
+      "name": "羅盤星",
+      "en": "COMPASS",
+      "hue": 170,
+      "tagline": "好奇探險家",
+      "description": "沒去過的地方、沒試過的事，都讓你眼睛發亮。你的人生是一張還在畫的地圖。",
+      "strengths": [
+        "好奇心滿點",
+        "適應力超好",
+        "勇於嘗試"
+      ],
+      "weakness": "對重複的日常容易失去耐心。",
+      "meetup_role": "提醒大家「其實還有別條路」。",
+      "kit_name": "探險小背包",
+      "helper_planet_ids": [
+        12,
+        10
+      ]
+    },
+    {
+      "id": 7,
+      "slug": "chime",
+      "name": "風鈴星",
+      "en": "CHIME",
+      "hue": 200,
+      "tagline": "溫柔傾聽者",
+      "description": "別人的情緒你都聽得見，一陣小小的風，就能讓你心有所感。",
+      "strengths": [
+        "共感力強",
+        "很會傾聽",
+        "說話溫柔"
+      ],
+      "weakness": "太容易把別人的心事帶回家。",
+      "meetup_role": "讓說話的人覺得被真的聽見。",
+      "kit_name": "風鈴小吊飾",
+      "helper_planet_ids": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": 8,
+      "slug": "deep",
+      "name": "深海星",
+      "en": "DEEP",
+      "hue": 230,
+      "tagline": "安靜觀察家",
+      "description": "話不多，但每句都很有份量。你習慣潛到事情底下，看見別人沒看到的東西。",
+      "strengths": [
+        "洞察力",
+        "冷靜分析",
+        "深度思考"
+      ],
+      "weakness": "想太多的時候，會把自己困在海底。",
+      "meetup_role": "幫大家看清楚問題真正的樣子。",
+      "kit_name": "小潛水鏡",
+      "helper_planet_ids": [
+        3,
+        6
+      ]
+    },
+    {
+      "id": 9,
+      "slug": "stardust",
+      "name": "星塵星",
+      "en": "STARDUST",
+      "hue": 260,
+      "tagline": "自由靈魂",
+      "description": "你不太在乎別人怎麼定義你。獨處時最有力量，也最懂自己要什麼。",
+      "strengths": [
+        "自我覺察",
+        "獨立",
+        "有自己的風格"
+      ],
+      "weakness": "太獨立了，讓人不知道怎麼靠近你。",
+      "meetup_role": "提醒大家「你不必跟別人一樣」。",
+      "kit_name": "星星小斗篷",
+      "helper_planet_ids": [
+        4,
+        11
+      ]
+    },
+    {
+      "id": 10,
+      "slug": "hourglass",
+      "name": "沙漏星",
+      "en": "HOURGLASS",
+      "hue": 290,
+      "tagline": "精準規劃師",
+      "description": "行事曆是你最好的朋友。什麼時候該做什麼，你心裡都有一張表。",
+      "strengths": [
+        "有條理",
+        "時間管理",
+        "計畫周全"
+      ],
+      "weakness": "計畫被打亂時，會偷偷焦慮。",
+      "meetup_role": "幫大家排出真的做得到的計畫。",
+      "kit_name": "懷錶小項鍊",
+      "helper_planet_ids": [
+        5,
+        9
+      ]
+    },
+    {
+      "id": 11,
+      "slug": "moonbridge",
+      "name": "月橋星",
+      "en": "MOONBRIDGE",
+      "hue": 320,
+      "tagline": "人際和事佬",
+      "description": "你像一座月光下的橋，總能把吵架的兩邊重新接起來。",
+      "strengths": [
+        "協調溝通",
+        "換位思考",
+        "讓氣氛變柔軟"
+      ],
+      "weakness": "太想讓大家開心，忘了說自己的意見。",
+      "meetup_role": "幫卡在人際關係裡的人找台階。",
+      "kit_name": "彎月小髮夾",
+      "helper_planet_ids": [
+        1,
+        8
+      ]
+    },
+    {
+      "id": 12,
+      "slug": "garden",
+      "name": "花園星",
+      "en": "GARDEN",
+      "hue": 350,
+      "tagline": "耐心培育者",
+      "description": "你相信好事要慢慢長。對人、對植物、對自己，你都願意多等一下。",
+      "strengths": [
+        "有耐心",
+        "溫柔又堅定",
+        "陪伴成長"
+      ],
+      "weakness": "等太久，有時錯過說出口的時機。",
+      "meetup_role": "陪大家把小目標慢慢養大。",
+      "kit_name": "小花圈",
+      "helper_planet_ids": [
+        6,
+        3
+      ]
+    }
+  ],
+  "quiz": [
+    {
+      "id": 1,
+      "text": "週末突然空出一整天，你會…",
+      "options": [
+        {
+          "letter": "A",
+          "text": "揪一群人出去玩",
+          "primary_planet_id": 3,
+          "secondary_planet_id": 1
+        },
+        {
+          "letter": "B",
+          "text": "窩在家追劇看書",
+          "primary_planet_id": 8,
+          "secondary_planet_id": 9
+        },
+        {
+          "letter": "C",
+          "text": "去一個沒去過的地方",
+          "primary_planet_id": 6,
+          "secondary_planet_id": 5
+        },
+        {
+          "letter": "D",
+          "text": "把房間跟待辦清單整理好",
+          "primary_planet_id": 10,
+          "secondary_planet_id": 2
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "text": "朋友半夜傳訊息說他好煩，你會…",
+      "options": [
+        {
+          "letter": "A",
+          "text": "先聽他說完，陪著就好",
+          "primary_planet_id": 7,
+          "secondary_planet_id": 12
+        },
+        {
+          "letter": "B",
+          "text": "直接幫他想解法",
+          "primary_planet_id": 2,
+          "secondary_planet_id": 10
+        },
+        {
+          "letter": "C",
+          "text": "約他明天去吃好吃的",
+          "primary_planet_id": 3,
+          "secondary_planet_id": 4
+        },
+        {
+          "letter": "D",
+          "text": "幫他換個角度看事情",
+          "primary_planet_id": 8,
+          "secondary_planet_id": 11
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "text": "你最喜歡哪一種天氣？",
+      "options": [
+        {
+          "letter": "A",
+          "text": "大太陽！",
+          "primary_planet_id": 3,
+          "secondary_planet_id": 1
+        },
+        {
+          "letter": "B",
+          "text": "下雨天",
+          "primary_planet_id": 8,
+          "secondary_planet_id": 7
+        },
+        {
+          "letter": "C",
+          "text": "起霧的早晨",
+          "primary_planet_id": 5,
+          "secondary_planet_id": 9
+        },
+        {
+          "letter": "D",
+          "text": "有風的傍晚",
+          "primary_planet_id": 6,
+          "secondary_planet_id": 11
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "text": "在一群人裡，你通常是那個…",
+      "options": [
+        {
+          "letter": "A",
+          "text": "點子王",
+          "primary_planet_id": 5,
+          "secondary_planet_id": 6
+        },
+        {
+          "letter": "B",
+          "text": "照顧大家的人",
+          "primary_planet_id": 4,
+          "secondary_planet_id": 12
+        },
+        {
+          "letter": "C",
+          "text": "把事情做完的人",
+          "primary_planet_id": 2,
+          "secondary_planet_id": 10
+        },
+        {
+          "letter": "D",
+          "text": "讓大家和好的人",
+          "primary_planet_id": 11,
+          "secondary_planet_id": 7
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "text": "事情搞砸了，你的第一反應是…",
+      "options": [
+        {
+          "letter": "A",
+          "text": "先衝再說，邊做邊修",
+          "primary_planet_id": 1,
+          "secondary_planet_id": 6
+        },
+        {
+          "letter": "B",
+          "text": "冷靜想清楚哪裡出錯",
+          "primary_planet_id": 8,
+          "secondary_planet_id": 10
+        },
+        {
+          "letter": "C",
+          "text": "找信任的人聊聊",
+          "primary_planet_id": 7,
+          "secondary_planet_id": 11
+        },
+        {
+          "letter": "D",
+          "text": "給自己一點獨處時間",
+          "primary_planet_id": 9,
+          "secondary_planet_id": 12
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "text": "如果要養一株植物，你希望它…",
+      "options": [
+        {
+          "letter": "A",
+          "text": "慢慢長，需要耐心",
+          "primary_planet_id": 12,
+          "secondary_planet_id": 4
+        },
+        {
+          "letter": "B",
+          "text": "長得很奇特，很有個性",
+          "primary_planet_id": 5,
+          "secondary_planet_id": 9
+        },
+        {
+          "letter": "C",
+          "text": "好照顧，超堅強",
+          "primary_planet_id": 2,
+          "secondary_planet_id": 1
+        },
+        {
+          "letter": "D",
+          "text": "漂亮療癒，看了就開心",
+          "primary_planet_id": 7,
+          "secondary_planet_id": 3
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "text": "朋友最常說你…",
+      "options": [
+        {
+          "letter": "A",
+          "text": "好溫暖",
+          "primary_planet_id": 4,
+          "secondary_planet_id": 12
+        },
+        {
+          "letter": "B",
+          "text": "好有想法",
+          "primary_planet_id": 5,
+          "secondary_planet_id": 8
+        },
+        {
+          "letter": "C",
+          "text": "好可靠",
+          "primary_planet_id": 2,
+          "secondary_planet_id": 4
+        },
+        {
+          "letter": "D",
+          "text": "好自由",
+          "primary_planet_id": 9,
+          "secondary_planet_id": 6
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "text": "來聚會，你最想帶走什麼？",
+      "options": [
+        {
+          "letter": "A",
+          "text": "一群新朋友",
+          "primary_planet_id": 3,
+          "secondary_planet_id": 11
+        },
+        {
+          "letter": "B",
+          "text": "被理解的感覺",
+          "primary_planet_id": 7,
+          "secondary_planet_id": 9
+        },
+        {
+          "letter": "C",
+          "text": "實際能用的建議",
+          "primary_planet_id": 10,
+          "secondary_planet_id": 2
+        },
+        {
+          "letter": "D",
+          "text": "看事情的新角度",
+          "primary_planet_id": 8,
+          "secondary_planet_id": 1
+        }
+      ]
+    }
+  ],
+  "scoring": "primary +2, secondary +1; highest total wins; ties -> lowest planet id",
+  "plants": [
+    {
+      "id": 1,
+      "name": "T1 翡翠",
+      "note": "圓潤飽滿，新手友善",
+      "price_twd": 450
+    },
+    {
+      "id": 2,
+      "name": "T1 綠鑽",
+      "note": "葉片亮綠，很有精神",
+      "price_twd": 450
+    },
+    {
+      "id": 3,
+      "name": "T1 觀音蓮",
+      "note": "葉脈像星圖",
+      "price_twd": 480
+    },
+    {
+      "id": 4,
+      "name": "T1 拉威雪蓮",
+      "note": "淡淡霜白色",
+      "price_twd": 480
+    },
+    {
+      "id": 5,
+      "name": "T1 小毛氈苔",
+      "note": "會抓小蟲的個性派",
+      "price_twd": 520
+    },
+    {
+      "id": 6,
+      "name": "T2 粉紅公主",
+      "note": "粉嫩大尺寸",
+      "price_twd": 680
+    },
+    {
+      "id": 7,
+      "name": "T2 正壽",
+      "note": "透亮窗面，大尺寸",
+      "price_twd": 680
+    }
+  ],
+  "kit_price_twd": 280,
+  "extras": [
+    {
+      "sku": "x1",
+      "name": "星球寶寶 KELLY 提包",
+      "price_twd": 450
+    },
+    {
+      "sku": "x2",
+      "name": "木質小桌燈",
+      "price_twd": 1280
+    },
+    {
+      "sku": "x3",
+      "name": "12 星球水晶貼紙組",
+      "price_twd": 150
+    }
+  ],
+  "events": [
+    {
+      "slug": "e1",
+      "date": "2026-11-01",
+      "weekday": "週六",
+      "time": "14:00",
+      "city": "台北 · 大安",
+      "type": "cross",
+      "planet_id": null,
+      "title": "跨星球煩惱交換所",
+      "description": "每桌 4 顆不同星球，抽一張煩惱卡，輪流給建議。",
+      "price_twd": 350,
+      "seats_left": 4
+    },
+    {
+      "slug": "e2",
+      "date": "2026-11-08",
+      "weekday": "週六",
+      "time": "19:00",
+      "city": "新竹 · 東區",
+      "type": "same",
+      "planet_id": 7,
+      "title": "風鈴星之夜：被好好聽見",
+      "description": "同星球的溫柔局，這次換你被聽。",
+      "price_twd": 300,
+      "seats_left": 7
+    },
+    {
+      "slug": "e3",
+      "date": "2026-11-15",
+      "weekday": "週六",
+      "time": "14:00",
+      "city": "台中 · 西區",
+      "type": "cross",
+      "planet_id": null,
+      "title": "卡關診所：工作 & 人際",
+      "description": "帶著一件卡住的事來，30 分鐘輪桌，換三種星球的腦袋。",
+      "price_twd": 350,
+      "seats_left": 9
+    },
+    {
+      "slug": "e4",
+      "date": "2026-11-22",
+      "weekday": "週六",
+      "time": "10:30",
+      "city": "新北 · 新店",
+      "type": "open",
+      "planet_id": null,
+      "title": "寶寶健檢日：燈泡植栽照護",
+      "description": "植栽師現場幫你的寶寶看狀況，教你換水、補光。",
+      "price_twd": 250,
+      "seats_left": 15
+    },
+    {
+      "slug": "e5",
+      "date": "2026-11-29",
+      "weekday": "週六",
+      "time": "19:30",
+      "city": "台北 · 中山",
+      "type": "same",
+      "planet_id": 8,
+      "title": "深海星讀書夜",
+      "description": "安靜讀 40 分鐘，再慢慢聊。",
+      "price_twd": 300,
+      "seats_left": 2
+    },
+    {
+      "slug": "e6",
+      "date": "2026-12-06",
+      "weekday": "週六",
+      "time": "14:00",
+      "city": "高雄 · 鹽埕",
+      "type": "cross",
+      "planet_id": null,
+      "title": "年末星球大會",
+      "description": "12 顆星球全員集合，一起把今年的卡關留在今年。",
+      "price_twd": 450,
+      "seats_left": 22
+    }
+  ],
+  "event_type_colors": {
+    "same": {
+      "bg": "rgba(240,201,110,.16)",
+      "color": "#f0c96e"
+    },
+    "cross": {
+      "bg": "rgba(242,169,154,.18)",
+      "color": "#f2a99a"
+    },
+    "open": {
+      "bg": "rgba(159,216,196,.16)",
+      "color": "#9fd8c4"
+    }
+  }
+}

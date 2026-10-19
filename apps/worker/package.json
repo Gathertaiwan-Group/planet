@@ -1,0 +1,27 @@
+{
+  "name": "worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsup --watch --onSuccess \"node dist/index.mjs\"",
+    "build": "tsup",
+    "start": "node dist/index.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.5",
+    "@supabase/supabase-js": "^2.118.0",
+    "hono": "^4.10.4",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@planet/shared": "workspace:*",
+    "@types/node": "^22.19.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3"
+  }
+}
