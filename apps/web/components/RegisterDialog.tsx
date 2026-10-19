@@ -98,11 +98,11 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
         {!done ? (
           <form onSubmit={submit} style={sx("display:flex;flex-direction:column;gap:14px")}>
             <label style={label}>
-              暱稱
+              <span>暱稱<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
               <input required name="name" maxLength={40} autoComplete="nickname" className="field" data-autofocus />
             </label>
             <label style={label}>
-              Email 或手機
+              <span>Email 或手機<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
               <input required name="contact" maxLength={100} autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} className="field" />
             </label>
             <label style={label}>

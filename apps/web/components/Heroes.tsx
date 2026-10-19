@@ -17,7 +17,7 @@ export function HeroOrbit({ planets }: { planets: Planet[] }) {
         <h1 className="wk" style={sx("margin:0;font-weight:700;font-size:clamp(42px,6vw,76px);line-height:1.18")}>
           每個人，
           <br />
-          都是從一顆<span style={sx("color:#f0c96e")}>小星球</span>
+          都是從一顆<span style={sx("color:#f0c96e;white-space:nowrap")}>小星球</span>
           <br />
           來的。
         </h1>

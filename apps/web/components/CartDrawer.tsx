@@ -129,11 +129,11 @@ export function CartDrawer() {
         {step === "form" && (
           <form onSubmit={submit} className="drawer-scroll drawer-foot" style={sx("flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px")}>
             <label style={label}>
-              收件人
+              <span>收件人<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
               <input required name="name" autoComplete="name" maxLength={40} className="field" data-autofocus />
             </label>
             <label style={label}>
-              手機
+              <span>手機<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
               <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} pattern="[+0-9\s\-]{8,20}" className="field" />
             </label>
             <label style={label}>
@@ -164,7 +164,7 @@ export function CartDrawer() {
             <button type="submit" disabled={busy} className="h-bg-gold" style={{ ...primary, opacity: busy ? 0.7 : 1 }}>
               {busy ? "處理中…" : "確認下單"}
             </button>
-            <button type="button" onClick={() => setStep("cart")} className="h-text-gold tap" style={sx("background:none;border:0;color:#aeb0c6;font-size:15px;cursor:pointer")}>
+            <button type="button" onClick={() => setStep("cart")} className="h-text-gold tap" style={sx("background:none;border:0;color:#aeb0c6;font-size:15px;cursor:pointer;min-height:44px")}>
               ← 回購物車
             </button>
           </form>

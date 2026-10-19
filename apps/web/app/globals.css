@@ -261,6 +261,9 @@ select.field {
     max-width: none !important;
     scroll-padding-inline: var(--gutter);
   }
+  [data-nav] > a:first-child {
+    margin-left: 0 !important;
+  }
   .hdr-in {
     row-gap: 6px !important;
     padding-top: 10px !important;
@@ -289,6 +292,10 @@ select.field {
   }
   .has-shop-bar {
     padding-bottom: calc(84px + var(--safe-b));
+  }
+  /* /shop 底部固定購物條：頁尾也要讓出空間，避免蓋住 LINE / IG / FB 連結 */
+  html[data-shop-bar] footer > div {
+    padding-bottom: calc(28px + 84px + var(--safe-b)) !important;
   }
 
   /* 繪本 hero 堆疊時：插畫區縮矮、分隔線改到下方 */

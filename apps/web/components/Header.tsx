@@ -48,9 +48,9 @@ export function Header() {
           data-nav="1"
           aria-label="主要導覽"
           className="nav no-scrollbar"
-          style={sx("order:1;flex:1 1 auto;min-width:0;justify-content:flex-end;display:flex;gap:2px;overflow-x:auto;align-items:center;max-width:100%;white-space:nowrap;scrollbar-width:none")}
+          style={sx("order:1;flex:1 1 0;min-width:0;justify-content:flex-start;display:flex;gap:2px;overflow-x:auto;align-items:center;max-width:100%;white-space:nowrap;scrollbar-width:none")}
         >
-          {nav.map(([href, label]) => {
+          {nav.map(([href, label], i) => {
             const on = isActive(path, href);
             return (
               <Link
@@ -61,6 +61,8 @@ export function Header() {
                 style={sx("border:0;border-radius:999px;padding:8px 14px;font-size:15px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;flex:0 0 auto", {
                   background: on ? "#222b4f" : "transparent",
                   color: on ? "#f0c96e" : "#f6f0e1",
+                  // 有空間時整組靠右（取代 justify-content:flex-end，溢出時仍可從頭捲動）
+                  marginLeft: i === 0 ? "auto" : undefined,
                 })}
               >
                 {label}

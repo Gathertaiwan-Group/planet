@@ -38,6 +38,12 @@ export function Shop({ planets, plants, products, kitPrice }: { planets: Planet[
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
+  // 標記頁面有底部購物條，讓頁尾預留空間（CSS 只在 ≤720px 生效）
+  useEffect(() => {
+    document.documentElement.setAttribute("data-shop-bar", "");
+    return () => document.documentElement.removeAttribute("data-shop-bar");
+  }, []);
+
   const ki = kitIdx ?? 0;
   const bp = planets[ki];
   const pl = plants[plantIdx] ?? plants[0];
