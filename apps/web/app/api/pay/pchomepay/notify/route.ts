@@ -1,5 +1,5 @@
 import { reconcile } from "@/lib/pay/service";
-import { GATEWAY_ORDER_RE } from "@/lib/pay/reconcile";
+import { GATEWAY_ORDER_RE, redactBody } from "@/lib/pay/reconcile";
 
 // PChomePay notify（公開 webhook）。
 // ⚠️ 沒有簽章 → 只取 order_id，其餘一律以 GET /v1/payment/{order_id} 回查為準。
@@ -13,8 +13,9 @@ const text = (body: string, status: number) =>
 export async function POST(req: Request) {
   let notifyType = "";
   let orderId = "";
+  let raw = "";
   try {
-    const raw = await req.text();
+    raw = await req.text();
     const sp = new URLSearchParams(raw);
     notifyType = (sp.get("notify_type") ?? "").trim().slice(0, 40);
     let msg: Record<string, unknown> = {};
@@ -27,10 +28,14 @@ export async function POST(req: Request) {
     }
     orderId = String(msg?.order_id ?? "").trim();
   } catch {
+    console.warn("[pay/notify] 無法解析 body:", redactBody(raw));
     return text("success", 200); // 格式錯誤，重送也不會變好
   }
   // 只處理本站訂單（TP 開頭）
-  if (!GATEWAY_ORDER_RE.test(orderId)) return text("success", 200);
+  if (!GATEWAY_ORDER_RE.test(orderId)) {
+    console.warn("[pay/notify] 抽不到本站 order_id，略過:", redactBody(raw));
+    return text("success", 200);
+  }
 
   const r = await reconcile(orderId, notifyType || null);
   console.log(`[pay/notify] order=${orderId} type=${notifyType} → ${r.outcome}`);

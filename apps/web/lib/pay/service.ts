@@ -1,6 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { sendAdminAlert } from "@/lib/mail";
 import { adminClient } from "@/lib/supabase";
 import { createGatewayCheckout, enabledPayTypes, pchomepayConfigured, queryGatewayPayment, type PayType } from "./pchomepay";
 import { GATEWAY_ORDER_RE, MIN_GATEWAY_AMOUNT, newGatewayOrderId, reconcileOrder, type MarkPaidResult, type ReconcileDeps, type ReconcileResult } from "./reconcile";
@@ -20,7 +21,49 @@ export function paymentsEnabled(): boolean {
   return pchomepayConfigured();
 }
 
+/** 同單號回查節流秒數（L11） */
+const CHECK_MIN_SECONDS = 10;
+
+const ATTENTION_TEXT: Record<string, string> = {
+  amount_mismatch: "閘道回報金額與訂單金額不符（未標記付款）",
+  paid_after_cancel: "訂單／報名已取消後才收到款項（需退款或恢復）",
+  duplicate_payment: "同一筆訂單／報名重複付款（需退款其中一筆）",
+};
+
 export const liveDeps: ReconcileDeps = {
+  async claimCheck(orderId) {
+    const sb = adminClient();
+    if (!sb) throw new Error("db_unavailable");
+    const { data, error } = await sb.rpc("claim_payment_check", { p_gateway_order_id: orderId, p_min_seconds: CHECK_MIN_SECONDS });
+    if (error) throw new Error(`claim_payment_check 失敗：${error.message}`);
+    return data === true;
+  },
+  async recordCheck(orderId, gatewayStatus) {
+    const sb = adminClient();
+    if (!sb) throw new Error("db_unavailable");
+    const { error } = await sb.rpc("record_payment_check", { p_gateway_order_id: orderId, p_gateway_status: gatewayStatus ?? "" });
+    if (error) throw new Error(`record_payment_check 失敗：${error.message}`);
+  },
+  async alertAttention(orderId, reason, info) {
+    const what = ATTENTION_TEXT[reason] ?? reason;
+    const kind = info.kind === "reg" ? "聚會報名" : "購物訂單";
+    const ok = await sendAdminAlert(
+      `【十二星球】付款需人工處理：${orderId}`,
+      [
+        `付款編號：${orderId}`,
+        `類型：${kind}`,
+        `狀況：${what}`,
+        info.amount != null ? `閘道金額：NT$ ${info.amount}` : "",
+        `環境：${process.env.PCHOMEPAY_SANDBOX === "true" ? "sandbox（測試）" : "正式"}`,
+        "",
+        `請到 Supabase planet.payments 查 gateway_order_id = ${orderId}（needs_attention 欄位），必要時到 PChomePay 商家後台處理退款。`,
+        `付款結果頁：${siteUrl()}/pay/${orderId}`,
+      ]
+        .filter((l) => l !== null)
+        .join("\n"),
+    );
+    if (!ok) console.error(`[pay] needs_attention 通知未寄出：${orderId} ${reason}`);
+  },
   async findPayment(orderId) {
     const sb = adminClient();
     if (!sb) throw new Error("db_unavailable");
@@ -69,9 +112,9 @@ export const liveDeps: ReconcileDeps = {
   },
 };
 
-export async function reconcile(orderId: string, notifyType: string | null): Promise<ReconcileResult> {
+export async function reconcile(orderId: string, notifyType: string | null, opts: { throttle?: boolean } = { throttle: true }): Promise<ReconcileResult> {
   try {
-    return await reconcileOrder(orderId, notifyType, liveDeps);
+    return await reconcileOrder(orderId, notifyType, liveDeps, opts);
   } catch (err) {
     console.error("[pay] 對帳失敗:", err);
     return { http: 500, outcome: "db_failed" };
@@ -80,7 +123,7 @@ export async function reconcile(orderId: string, notifyType: string | null): Pro
 
 export type CheckoutResult =
   | { ok: true; gatewayOrderId: string; paymentUrl: string }
-  | { ok: false; reason: "disabled" | "below_minimum" | "db_failed" | "gateway_failed" };
+  | { ok: false; reason: "disabled" | "below_minimum" | "db_failed" | "gateway_failed" | "misconfigured" };
 
 /**
  * 為一筆訂單／報名開一次付款嘗試：建 payments(init) → PChomePay 建單 → 存 payment_url。
@@ -96,6 +139,11 @@ export async function startCheckout(input: {
   buyerEmail?: string | null;
 }): Promise<CheckoutResult> {
   if (!paymentsEnabled()) return { ok: false, reason: "disabled" };
+  // L12：正式環境沒設 NEXT_PUBLIC_SITE_URL → return/notify 網址不可靠，拒絕建單
+  if (process.env.VERCEL_ENV === "production" && !process.env.NEXT_PUBLIC_SITE_URL?.trim()) {
+    console.error("[pay] production 缺 NEXT_PUBLIC_SITE_URL，拒絕建單");
+    return { ok: false, reason: "misconfigured" };
+  }
   if (input.amount < MIN_GATEWAY_AMOUNT) return { ok: false, reason: "below_minimum" };
   const allowed = enabledPayTypes();
   const payTypes = input.payTypes.filter((t) => allowed.includes(t));
@@ -154,6 +202,11 @@ export interface PaymentView {
   title: string;
   /** 同一筆訂單／報名之後是否已有更新的付款嘗試（舊連結不再可用） */
   superseded: boolean;
+  /** 最近一次回查的閘道狀態（W/P/S/F） */
+  gatewayStatus: string | null;
+  needsAttention: string | null;
+  /** 報名已逾時（保留期滿、已回查確認未付）→ 請重新報名 */
+  regStale: boolean;
 }
 
 export async function getPaymentView(gatewayOrderId: string): Promise<PaymentView | null> {
@@ -162,7 +215,7 @@ export async function getPaymentView(gatewayOrderId: string): Promise<PaymentVie
   if (!sb) return null;
   const { data: p, error } = await sb
     .from("payments")
-    .select("gateway_order_id,order_id,registration_id,status,amount,pay_type,payment_url,atm_bank_code,atm_virtual_account,atm_expire_at,created_at")
+    .select("gateway_order_id,order_id,registration_id,status,amount,pay_type,payment_url,atm_bank_code,atm_virtual_account,atm_expire_at,created_at,gateway_status,needs_attention")
     .eq("gateway_order_id", gatewayOrderId)
     .maybeSingle();
   if (error || !p) return null;
@@ -170,13 +223,18 @@ export async function getPaymentView(gatewayOrderId: string): Promise<PaymentVie
   const targetId = (p.order_id ?? p.registration_id) as string;
   let targetStatus = "pending";
   let title = "十二星球";
+  let regStale = false;
   if (kind === "order") {
     const { data: o } = await sb.from("orders").select("status").eq("id", targetId).maybeSingle();
     targetStatus = (o?.status as string) ?? "cancelled";
     title = "星球寶寶訂單";
   } else {
-    const { data: r } = await sb.from("registrations").select("status,events(title)").eq("id", targetId).maybeSingle();
+    const { data: r } = await sb.from("registrations").select("status,created_at,events(title)").eq("id", targetId).maybeSingle();
     targetStatus = (r?.status as string) ?? "cancelled";
+    if (r && targetStatus === "pending") {
+      const { data: st } = await sb.rpc("registration_is_stale", { p_reg_id: targetId, p_created_at: r.created_at });
+      regStale = st === true;
+    }
     const ev = (r as { events?: { title?: string } | { title?: string }[] } | null)?.events;
     const evTitle = Array.isArray(ev) ? ev[0]?.title : ev?.title;
     title = evTitle ? `聚會報名：${evTitle}` : "聚會報名";
@@ -200,22 +258,80 @@ export async function getPaymentView(gatewayOrderId: string): Promise<PaymentVie
       : null,
     title,
     superseded: (count ?? 0) > 0,
+    gatewayStatus: (p.gateway_status as string) ?? null,
+    needsAttention: (p.needs_attention as string) ?? null,
+    regStale,
   };
 }
 
-/** 重新付款：只有目標仍 pending、這筆嘗試未付款、且沒有仍有效的 ATM 帳號時，才開新的一筆 */
-export async function retryCheckout(gatewayOrderId: string, payType: PayType): Promise<CheckoutResult | { ok: false; reason: "not_allowed" }> {
+export type RetryRejectReason = "not_allowed" | "superseded" | "attention" | "in_progress" | "expired" | "check_failed";
+
+/**
+ * 重新付款（開新的付款嘗試）。拒絕條件：
+ *   - 目標不是 pending、這筆已付款、這筆已被更新的嘗試取代（L9）、有 needs_attention（L8）
+ *   - 同目標任何 init 嘗試即時回查為 P／S、或有仍有效的 ATM 帳號（H2：避免重複扣款）；回查失敗也拒絕
+ *   - 報名已逾時（M4：請重新報名）
+ */
+export async function retryCheckout(gatewayOrderId: string, payType: PayType): Promise<CheckoutResult | { ok: false; reason: RetryRejectReason }> {
   const v = await getPaymentView(gatewayOrderId);
   if (!v || v.targetStatus !== "pending" || v.paymentStatus === "paid") return { ok: false, reason: "not_allowed" };
-  if (v.atm && (!v.atm.expireAt || new Date(v.atm.expireAt).getTime() > Date.now()) && v.paymentStatus === "init") {
-    return { ok: false, reason: "not_allowed" };
+  if (v.superseded) return { ok: false, reason: "superseded" };
+  if (v.needsAttention) return { ok: false, reason: "attention" };
+
+  const sb = adminClient();
+  if (!sb) return { ok: false, reason: "check_failed" };
+  const col = v.kind === "order" ? "order_id" : "registration_id";
+  const { data: inits, error } = await sb.from("payments").select("gateway_order_id").eq(col, v.targetId).eq("status", "init");
+  if (error) return { ok: false, reason: "check_failed" };
+  for (const row of inits ?? []) {
+    const r = await reconcile(row.gateway_order_id as string, "retry_check", { throttle: false });
+    if (r.http !== 200) return { ok: false, reason: "check_failed" };
   }
+  const { data: all, error: e2 } = await sb
+    .from("payments")
+    .select("status,gateway_status,atm_virtual_account,atm_expire_at,needs_attention")
+    .eq(col, v.targetId);
+  if (e2) return { ok: false, reason: "check_failed" };
+  const now = Date.now();
+  for (const p of all ?? []) {
+    if (p.status === "paid" || p.needs_attention) return { ok: false, reason: "in_progress" };
+    if (p.status !== "init") continue;
+    const gs = String(p.gateway_status ?? "").toUpperCase();
+    if (gs === "P" || gs === "S") return { ok: false, reason: "in_progress" };
+    if (p.atm_virtual_account && (!p.atm_expire_at || new Date(p.atm_expire_at as string).getTime() > now)) return { ok: false, reason: "in_progress" };
+  }
+  const fresh = await getPaymentView(gatewayOrderId);
+  if (!fresh || fresh.targetStatus !== "pending") return { ok: false, reason: "not_allowed" };
+  if (fresh.regStale) return { ok: false, reason: "expired" };
+
   return startCheckout({
     kind: v.kind,
     targetId: v.targetId,
     amount: v.amount,
     payTypes: [payType],
-    itemName: `十二星球｜${v.title}`,
+    itemName: v.kind === "order" ? "十二星球｜星球寶寶訂單" : "十二星球｜聚會報名費",
     itemPath: v.kind === "order" ? "/shop" : "/events",
   });
+}
+
+/** H1：定期對帳（pg_cron 每 10 分鐘觸發）——近 7 天所有 init 付款嘗試逐筆回查 */
+export async function reconcileOpenPayments(limit = 100): Promise<Record<string, number>> {
+  const sb = adminClient();
+  if (!sb) throw new Error("db_unavailable");
+  const since = new Date(Date.now() - 7 * 86400_000).toISOString();
+  const { data, error } = await sb
+    .from("payments")
+    .select("gateway_order_id")
+    .eq("status", "init")
+    .gte("created_at", since)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  const counts: Record<string, number> = { checked: 0 };
+  for (const row of data ?? []) {
+    const r = await reconcile(row.gateway_order_id as string, "cron", { throttle: true });
+    counts.checked += 1;
+    counts[r.outcome] = (counts[r.outcome] ?? 0) + 1;
+  }
+  return counts;
 }

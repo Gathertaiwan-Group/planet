@@ -7,6 +7,8 @@ import {
   parseGatewayDate,
   parseGatewayPayment,
   reconcileOrder,
+  redactBody,
+  sanitizeRaw,
   type GatewayResult,
   type MarkPaidResult,
   type ReconcileDeps,
@@ -15,22 +17,32 @@ import {
 const OID = "TP261027ABCD2345";
 
 /** 模擬 DB：payments 一筆、目標（訂單／報名）一筆，markPaid 依 mark_payment_paid 的語意實作 */
-function setup(opts: { gateway: GatewayResult | null; paymentStatus?: string; targetStatus?: string; amount?: number; found?: boolean }) {
+function setup(opts: { gateway: GatewayResult | null; paymentStatus?: string; targetStatus?: string; amount?: number; found?: boolean; claim?: boolean }) {
   const db = {
     paymentStatus: opts.paymentStatus ?? "init",
     targetStatus: opts.targetStatus ?? "pending",
     amount: opts.amount ?? 680,
     attention: null as string | null,
     atm: null as null | { account: string },
+    checked: null as string | null,
+    alerts: [] as string[],
   };
   const deps: ReconcileDeps = {
     findPayment: vi.fn(async () => (opts.found === false ? null : { status: db.paymentStatus })),
+    claimCheck: vi.fn(async () => opts.claim !== false),
+    recordCheck: vi.fn(async (_id: string, st: string | null) => {
+      db.checked = st;
+    }),
+    alertAttention: vi.fn(async (_id: string, reason: string) => {
+      db.alerts.push(reason);
+    }),
     query: vi.fn(async () => opts.gateway),
     markPaid: vi.fn(async (_id: string, amount: number): Promise<MarkPaidResult> => {
       if (db.paymentStatus === "paid") return { result: "already_paid", transitioned: false, kind: "order", target_id: "o1" };
       if (amount !== db.amount) {
+        const isNew = db.attention !== "amount_mismatch";
         db.attention = "amount_mismatch";
-        return { result: "amount_mismatch", transitioned: false, kind: "order", target_id: "o1" };
+        return { result: "amount_mismatch", transitioned: false, attention_new: isNew, kind: "order", target_id: "o1" };
       }
       db.paymentStatus = "paid";
       if (db.targetStatus === "pending") {
@@ -38,7 +50,7 @@ function setup(opts: { gateway: GatewayResult | null; paymentStatus?: string; ta
         return { result: "paid", transitioned: true, kind: "order", target_id: "o1" };
       }
       db.attention = db.targetStatus === "cancelled" ? "paid_after_cancel" : "duplicate_payment";
-      return { result: "needs_attention", reason: db.attention, transitioned: false, kind: "order", target_id: "o1" };
+      return { result: "needs_attention", reason: db.attention, transitioned: false, attention_new: true, kind: "order", target_id: "o1" };
     }),
     recordAtm: vi.fn(async (_id, info) => {
       db.atm = { account: info.account };
@@ -135,10 +147,6 @@ describe("reconcileOrder（notify 處理）", () => {
     expect(db.targetStatus).toBe("pending");
   });
 
-  it("回查 P → pending", async () => {
-    const { deps } = setup({ gateway: { status: "P", amount: 680 } });
-    expect((await reconcileOrder(OID, null, deps)).outcome).toBe("pending");
-  });
 
   it("回查 F → 付款嘗試標 failed（訂單不動）", async () => {
     const { db, deps } = setup({ gateway: { status: "F" } });
@@ -194,5 +202,59 @@ describe("reconcileOrder（notify 處理）", () => {
     const { db, deps } = setup({ gateway: { status: "W", amount: 680, payment_info: { virtual_account: "9999000011112222", expire_date: "2026/10/30 23:59:59" } } });
     expect((await reconcileOrder(OID, null, deps)).outcome).toBe("atm_issued");
     expect(db.atm?.account).toBe("9999000011112222");
+  });
+
+  it("金額不符 → 第一次寄通知、重複 notify 不重寄", async () => {
+    const { db, deps } = setup({ gateway: { status: "S", amount: 30 } });
+    await reconcileOrder(OID, null, deps);
+    await reconcileOrder(OID, null, deps);
+    expect(db.alerts).toEqual(["amount_mismatch"]);
+  });
+
+  it("取消後才付款 → 寄 paid_after_cancel 通知", async () => {
+    const { db, deps } = setup({ gateway: { status: "S", amount: 680 }, targetStatus: "cancelled" });
+    await reconcileOrder(OID, null, deps);
+    expect(db.alerts).toEqual(["paid_after_cancel"]);
+  });
+
+  it("回查 P → processing（頁面不給重試）", async () => {
+    const { db, deps } = setup({ gateway: { status: "P", amount: 680 } });
+    expect((await reconcileOrder(OID, null, deps)).outcome).toBe("processing");
+    expect(db.checked).toBe("P");
+  });
+
+  it("節流：N 秒內已回查 → throttled（500，不打閘道）", async () => {
+    const { deps } = setup({ gateway: { status: "S", amount: 680 }, claim: false });
+    expect(await reconcileOrder(OID, null, deps, { throttle: true })).toEqual({ http: 500, outcome: "throttled" });
+    expect(deps.query).not.toHaveBeenCalled();
+  });
+
+  it("不節流時不呼叫 claimCheck；成功回查一定記錄狀態", async () => {
+    const { db, deps } = setup({ gateway: { status: "W", amount: 680 } });
+    await reconcileOrder(OID, null, deps);
+    expect(deps.claimCheck).not.toHaveBeenCalled();
+    expect(db.checked).toBe("W");
+  });
+
+  it("回查失敗不記錄狀態（避免報名被誤釋出）", async () => {
+    const { db, deps } = setup({ gateway: null });
+    await reconcileOrder(OID, null, deps);
+    expect(db.checked).toBeNull();
+  });
+});
+
+describe("raw 白名單 / notify body 去個資", () => {
+  it("只留白名單欄位", () => {
+    const out = sanitizeRaw({
+      order_id: OID, status: "S", amount: "680", items: [{ name: "x" }], buyer_email: "a@b.com", card_last4: "1234",
+      payment_info: { virtual_account: "999", bank_code: "822", payer_name: "王小明" },
+    });
+    expect(out).toEqual({ order_id: OID, status: "S", amount: "680", payment_info: { virtual_account: "999", bank_code: "822" } });
+  });
+  it("redactBody 遮 email 與長數字、截 200 字", () => {
+    const r = redactBody("notify_message=" + JSON.stringify({ email: "someone@example.com", phone: "0912345678" }) + "x".repeat(300));
+    expect(r).not.toContain("someone@example.com");
+    expect(r).not.toContain("0912345678");
+    expect(r.length).toBe(200);
   });
 });

@@ -16,6 +16,12 @@ const fmtTime = (iso: string) =>
 
 const ERR: Record<string, string> = {
   not_allowed: "這筆付款目前不能重新付款，請重新整理看看最新狀態。",
+  superseded: "你已經開過新的付款頁，請使用最新的付款頁完成付款。",
+  attention: "這筆付款需要我們人工確認，我們會盡快與你聯繫。",
+  in_progress: "付款正在處理中或已完成，為避免重複扣款，暫時不能重新付款。請稍後重新整理。",
+  expired: "這筆報名已超過保留時間，請重新報名。",
+  check_failed: "暫時無法確認付款狀態，為避免重複扣款請稍後再試。",
+  misconfigured: "付款服務設定中，請稍後再試。",
   gateway_failed: "付款頁暫時打不開，請稍後再試一次。",
   db_failed: "系統忙碌中，請稍後再試一次。",
   disabled: "線上付款暫時關閉，請稍後再試。",
@@ -44,8 +50,11 @@ export default async function PayResultPage({ params, searchParams }: { params: 
   const paidButCancelled = v.paymentStatus === "paid" && v.targetStatus === "cancelled";
   const targetPaidElsewhere = v.paymentStatus !== "paid" && (v.targetStatus === "paid" || v.targetStatus === "shipped");
   const atmWaiting = v.paymentStatus === "init" && !!v.atm && v.targetStatus === "pending";
-  const waiting = v.paymentStatus === "init" && !v.atm && v.targetStatus === "pending";
-  const failed = v.paymentStatus === "failed" && v.targetStatus === "pending";
+  const attention = !!v.needsAttention && v.paymentStatus !== "paid";
+  const processing = !attention && v.paymentStatus === "init" && !v.atm && v.targetStatus === "pending" && (v.gatewayStatus === "P" || v.gatewayStatus === "S");
+  const expired = !attention && v.targetStatus === "pending" && v.regStale && !v.atm;
+  const waiting = !attention && !processing && !expired && v.paymentStatus === "init" && !v.atm && v.targetStatus === "pending";
+  const failed = !attention && !expired && v.paymentStatus === "failed" && v.targetStatus === "pending";
   const cancelled = v.targetStatus === "cancelled" && v.paymentStatus !== "paid";
   const backHref = isOrder ? "/shop" : "/events";
   const backText = isOrder ? "← 回商店" : "← 看其他聚會";
@@ -101,6 +110,28 @@ export default async function PayResultPage({ params, searchParams }: { params: 
               )}
             </dl>
             <span style={sx("font-size:14px;line-height:1.7;color:#8e90a8")}>轉帳完成後系統會自動確認，可以回到這一頁查看狀態。{isOrder ? "" : "名額會保留到繳費期限。"}</span>
+          </>
+        )}
+
+        {attention && (
+          <>
+            <span className="wk" style={sx("font-size:26px;font-weight:700")}>需要人工確認</span>
+            <span style={muted}>這筆付款的狀態需要我們人工確認，我們會盡快與你聯繫，請不要重複付款。</span>
+          </>
+        )}
+
+        {processing && (
+          <>
+            <AutoRefresh />
+            <span className="wk" style={sx("font-size:26px;font-weight:700")}>付款處理中…</span>
+            <span style={muted}>付款服務正在處理這筆款項，完成後這頁會自動更新。為避免重複扣款，請不要重新付款。</span>
+          </>
+        )}
+
+        {expired && (
+          <>
+            <span className="wk" style={sx("font-size:26px;font-weight:700")}>報名已逾時</span>
+            <span style={muted}>這筆報名超過保留時間沒有完成付款，名額已釋出。還有座位的話可以重新報名。</span>
           </>
         )}
 
