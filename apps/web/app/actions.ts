@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isLetter, PAYMENT_OPTIONS, scorePlanet, SHIPPING_OPTIONS, type OrderItemInput } from "@planet/shared";
 import { getCatalog } from "@/lib/data";
-import { paymentRedirect } from "@/lib/payments";
+import { startCheckout } from "@/lib/pay/service";
 import { adminClient } from "@/lib/supabase";
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -23,8 +23,9 @@ export async function saveQuizResult(input: { answers: string[]; anonId: string 
   return { ok: !error, planetId };
 }
 
+/** manualPay：需付款但無法線上付（金額 1–29 元低於 PChomePay 下限，或金流未設定）→ 人工聯繫收費 */
 export type RegisterResult =
-  | { ok: true; seatsLeft: number; amount: number; redirectUrl: string | null }
+  | { ok: true; seatsLeft: number; amount: number; redirectUrl: string | null; manualPay: boolean }
   | { ok: false; error: string; seatsLeft?: number };
 
 const REG_ERRORS: Record<string, string> = {
@@ -73,11 +74,31 @@ export async function registerEvent(input: {
   const row = (Array.isArray(data) ? data[0] : data) as { registration_id: string; amount_twd: number; seats_left: number };
   revalidatePath("/events");
   revalidatePath("/");
-  const redirectUrl = row.amount_twd > 0 ? await paymentRedirect("reg", row.registration_id, null) : null;
-  return { ok: true, seatsLeft: row.seats_left, amount: row.amount_twd, redirectUrl };
+  if (row.amount_twd <= 0) return { ok: true, seatsLeft: row.seats_left, amount: 0, redirectUrl: null, manualPay: false };
+
+  const co = await startCheckout({
+    kind: "reg",
+    targetId: row.registration_id,
+    amount: row.amount_twd,
+    payTypes: ["CARD", "ATM"],
+    itemName: "十二星球｜聚會報名費",
+    itemPath: "/events",
+    buyerEmail: isEmail ? contact.toLowerCase() : null,
+  });
+  if (co.ok) return { ok: true, seatsLeft: row.seats_left, amount: row.amount_twd, redirectUrl: `/api/pay/go/${co.gatewayOrderId}`, manualPay: false };
+  if (co.reason === "disabled" || co.reason === "below_minimum") {
+    return { ok: true, seatsLeft: row.seats_left, amount: row.amount_twd, redirectUrl: null, manualPay: true };
+  }
+  // 付款頁開不起來 → 取消這筆報名（釋出座位、可立刻重報），請使用者稍後再試
+  await sb.from("registrations").update({ status: "cancelled" }).eq("id", row.registration_id).eq("status", "pending");
+  revalidatePath("/events");
+  revalidatePath("/");
+  return { ok: false, error: "付款頁暫時打不開，報名沒有成立，請稍後再試一次。", seatsLeft: row.seats_left + 1 };
 }
 
-export type OrderResult = { ok: true; orderId: string; total: number; redirectUrl: string | null } | { ok: false; error: string };
+export type OrderResult =
+  | { ok: true; orderId: string; total: number; redirectUrl: string | null; manualPay: boolean }
+  | { ok: false; error: string };
 
 const ORDER_ERRORS: Record<string, string> = {
   empty_cart: "購物車是空的。",
@@ -129,6 +150,21 @@ export async function createOrder(input: {
     return { ok: false, error: code ? ORDER_ERRORS[code] : "下單沒有成功，請稍後再試。" };
   }
   const row = (Array.isArray(data) ? data[0] : data) as { order_id: string; total_twd: number };
-  const redirectUrl = row.total_twd > 0 ? await paymentRedirect("order", row.order_id, input.payment) : null;
-  return { ok: true, orderId: row.order_id, total: row.total_twd, redirectUrl };
+  if (row.total_twd <= 0) return { ok: true, orderId: row.order_id, total: 0, redirectUrl: null, manualPay: false };
+
+  const co = await startCheckout({
+    kind: "order",
+    targetId: row.order_id,
+    amount: row.total_twd,
+    payTypes: [input.payment === "ATM 轉帳" ? "ATM" : "CARD"],
+    itemName: "十二星球｜星球寶寶訂單",
+    itemPath: "/shop",
+  });
+  if (co.ok) return { ok: true, orderId: row.order_id, total: row.total_twd, redirectUrl: `/api/pay/go/${co.gatewayOrderId}`, manualPay: false };
+  if (co.reason === "disabled" || co.reason === "below_minimum") {
+    return { ok: true, orderId: row.order_id, total: row.total_twd, redirectUrl: null, manualPay: true };
+  }
+  // 付款頁開不起來 → 取消這張訂單（購物車保留），請使用者再試一次
+  await sb.from("orders").update({ status: "cancelled" }).eq("id", row.order_id).eq("status", "pending");
+  return { ok: false, error: "付款頁暫時打不開，訂單沒有成立，請稍後再試一次（購物車還在）。" };
 }

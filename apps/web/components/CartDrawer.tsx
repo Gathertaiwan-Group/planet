@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { GOLD_ORB, nt, orb, PAYMENT_OPTIONS, SHIPPING_OPTIONS, type OrderItemInput } from "@planet/shared";
 import { createOrder } from "@/app/actions";
 import { cartTotal, useStore } from "@/lib/store";
@@ -24,6 +24,14 @@ export function CartDrawer() {
   const [pendingPay, setPendingPay] = useState(false);
 
   const close = useCallback(() => useStore.getState().closeCart(), []);
+  // 從付款頁按「上一頁」回來（bfcache 還原）時，解除導轉中的 loading
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusy(false);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
   useOverlay(open, close, ref);
 
   if (!open) return null;
@@ -39,6 +47,7 @@ export function CartDrawer() {
     );
     setBusy(true);
     setError(null);
+    let leaving = false;
     try {
       const r = await createOrder({
         recipient: String(fd.get("name") ?? ""),
@@ -52,17 +61,19 @@ export function CartDrawer() {
         setError(r.error);
         return;
       }
+      // 訂單已成立（付款頁建好）才清空購物車；之後付款失敗可在付款結果頁重新付款，不需要購物車
       clearCart();
       if (r.redirectUrl) {
-        window.location.href = r.redirectUrl;
+        leaving = true; // 導轉期間維持 loading，防重複送出
+        window.location.assign(r.redirectUrl);
         return;
       }
-      setPendingPay(true);
+      setPendingPay(r.manualPay);
       setStep("done");
     } catch {
       setError("網路好像不太穩，請再試一次。");
     } finally {
-      setBusy(false);
+      if (!leaving) setBusy(false);
     }
   }
 
@@ -158,11 +169,12 @@ export function CartDrawer() {
             </label>
             <label style={label}>
               付款方式
-              <select name="pay" className="field">
+              <select name="pay" className="field" aria-describedby="pay-note">
                 {PAYMENT_OPTIONS.map((o) => (
                   <option key={o}>{o}</option>
                 ))}
               </select>
+              <span id="pay-note" style={sx("font-size:12px;color:#8e90a8;line-height:1.5")}>下單後會前往 PChomePay 支付連安全付款頁</span>
             </label>
             <div style={sx("display:flex;justify-content:space-between;font-size:20px;font-weight:700;margin-top:auto;padding-top:12px")}>
               <span>合計</span>
@@ -174,7 +186,7 @@ export function CartDrawer() {
               </span>
             )}
             <button type="submit" disabled={busy} className="h-bg-gold" style={{ ...primary, opacity: busy ? 0.7 : 1 }}>
-              {busy ? "處理中…" : "確認下單"}
+              {busy ? "前往付款頁…" : "確認下單並付款"}
             </button>
             <button type="button" onClick={() => setStep("cart")} className="h-text-gold tap" style={sx("background:none;border:0;color:#aeb0c6;font-size:15px;cursor:pointer;min-height:44px")}>
               ← 回購物車

@@ -19,6 +19,14 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
   const [error, setError] = useState<string | null>(null);
 
   const close = useCallback(() => useStore.getState().closeReg(), []);
+  // 從付款頁按「上一頁」回來（bfcache 還原）時，解除導轉中的 loading
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusy(false);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
   useOverlay(!!ev, close, ref);
   useEffect(() => {
     setDone(false);
@@ -40,6 +48,7 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
     const pid = Number(fd.get("planet"));
     setBusy(true);
     setError(null);
+    let leaving = false;
     try {
       const st = useStore.getState();
       const r = await registerEvent({
@@ -57,15 +66,16 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
       }
       st.markRegistered(ev.slug, r.seatsLeft);
       if (r.redirectUrl) {
-        window.location.href = r.redirectUrl;
+        leaving = true; // 導轉期間維持 loading，防重複送出
+        window.location.assign(r.redirectUrl);
         return;
       }
-      setPendingPay(r.amount > 0);
+      setPendingPay(r.manualPay);
       setDone(true);
     } catch {
       setError("網路好像不太穩，請再試一次。");
     } finally {
-      setBusy(false);
+      if (!leaving) setBusy(false);
     }
   }
 
@@ -130,7 +140,7 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
               </span>
             )}
             <button type="submit" disabled={busy} className="h-bg-gold" style={sx("background:#f0c96e;color:#10162e;border:0;border-radius:999px;padding:16px;font-size:17px;font-weight:600;cursor:pointer", { opacity: busy ? 0.7 : 1 })}>
-              {busy ? "處理中…" : "確認報名"}
+              {busy ? (ev.price_twd > 0 ? "前往付款頁…" : "處理中…") : ev.price_twd > 0 ? "確認報名並付款" : "確認報名"}
             </button>
           </form>
         ) : (

@@ -71,7 +71,8 @@ export interface Catalog {
 }
 
 export const SHIPPING_OPTIONS = ["超商取貨", "宅配到府", "聚會現場取貨"] as const;
-export const PAYMENT_OPTIONS = ["信用卡", "LINE Pay", "ATM 轉帳"] as const;
+// PChomePay 支付連：信用卡 / ATM 轉帳（LINE Pay 已移除；DB check 仍允許舊值，不影響）
+export const PAYMENT_OPTIONS = ["信用卡", "ATM 轉帳"] as const;
 export type Shipping = (typeof SHIPPING_OPTIONS)[number];
 export type PaymentMethod = (typeof PAYMENT_OPTIONS)[number];
 
