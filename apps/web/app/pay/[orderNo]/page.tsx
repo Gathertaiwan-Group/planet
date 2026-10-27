@@ -110,7 +110,8 @@ export default async function PayResultPage({ params, searchParams }: { params: 
             <span className="wk" style={sx("font-size:26px;font-weight:700")}>正在確認付款…</span>
             <span style={muted}>如果你已經付款，請稍等幾秒，這頁會自動更新。還沒付款的話，可以回到付款頁繼續。</span>
             {!v.superseded && v.paymentUrl && <GoPayLink orderNo={v.gatewayOrderId} />}
-            {!v.superseded && <RetryForm orderNo={v.gatewayOrderId} payTypes={enabledPayTypes().filter((t) => t !== "CARD")} />}
+            {!v.superseded && <RetryForm orderNo={v.gatewayOrderId} payTypes={enabledPayTypes()} />}
+            {!v.superseded && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>付款頁開啟超過 10 分鐘會失效，請改按「重新付款」開新的付款頁。</span>}
             {!isOrder && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>報名未付款的名額會保留 2 小時。</span>}
             {v.superseded && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>這是較早的付款連結，你已經開過新的付款頁；請使用最新的付款頁完成付款。</span>}
           </>

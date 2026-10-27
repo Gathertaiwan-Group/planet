@@ -46,7 +46,7 @@ export function RetryForm({ orderNo, payTypes }: { orderNo: string; payTypes: ("
           className={i === 0 ? "h-bg-gold" : undefined}
           style={{ ...btn, background: i === 0 ? "#f0c96e" : "#2a3358", color: i === 0 ? "#10162e" : "#f6f0e1", opacity: busy && busy !== t ? 0.5 : 1 }}
         >
-          {busy === t ? "前往付款頁…" : t === "CARD" ? "用信用卡重新付款" : "改用 ATM 轉帳"}
+          {busy === t ? "前往付款頁…" : t === "CARD" ? "重新付款（信用卡）" : "改用 ATM 轉帳"}
         </button>
       ))}
     </form>
