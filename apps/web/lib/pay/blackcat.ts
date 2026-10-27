@@ -1,6 +1,6 @@
 import "server-only";
 import { GATEWAY_ORDER_RE } from "./reconcile";
-import { isBlackcatPayUrl, MAX_ORDER_AMOUNT, sanitizeOrderDetail, taipeiTimestamp, toInt } from "./blackcat-core";
+import { isBlackcatPayUrl, MAX_ORDER_AMOUNT, queryMatchesOrder, sanitizeOrderDetail, taipeiTimestamp, toInt } from "./blackcat-core";
 
 // 黑貓PAY COCS 線上刷卡 REST 客戶端（零新套件，一律 fetch）。純函式與安全說明見 blackcat-core.ts。
 // env：BLACKCAT_CUST_ID / BLACKCAT_API_PASSWORD / BLACKCAT_HASH_BASE / BLACKCAT_SANDBOX（只有 "false" 才打正式機）
@@ -9,7 +9,9 @@ import { isBlackcatPayUrl, MAX_ORDER_AMOUNT, sanitizeOrderDetail, taipeiTimestam
 // 建單／查詢都只靠 Bearer token，不需 checksum；也沒有 IP 白名單要求（Vercel 浮動 IP 可用）。
 
 export const BLACKCAT_APN_PATH = "/api/pay/blackcat/apn";
-const REQUEST_TIMEOUT_MS = 20_000;
+/** 建單：客人在等刷卡網址，給 20 秒；回查（APN／排程／結果頁）縮短為 8 秒，避免拖垮排程預算 */
+const CREATE_TIMEOUT_MS = 20_000;
+const QUERY_TIMEOUT_MS = 8_000;
 
 /** 預設 sandbox：忘了設變數的後果是打測試機付不了錢，而不是拿測試設定收真錢 */
 export function blackcatSandbox(): boolean {
@@ -54,7 +56,7 @@ export function blackcatConfigured(): boolean {
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-async function getToken(): Promise<{ ok: true; token: string } | { ok: false; reason: string }> {
+async function getToken(timeoutMs: number): Promise<{ ok: true; token: string } | { ok: false; reason: string }> {
   const now = Date.now();
   if (cachedToken && cachedToken.expiresAt > now) return { ok: true, token: cachedToken.token };
   let res: Response;
@@ -64,7 +66,7 @@ async function getToken(): Promise<{ ok: true; token: string } | { ok: false; re
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ grant_type: "password", username: custId(), password: apiPassword() }).toString(),
       cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     return { ok: false, reason: `token 連線失敗：${(err as Error)?.message ?? "unknown"}` };
@@ -91,9 +93,9 @@ async function getToken(): Promise<{ ok: true; token: string } | { ok: false; re
   return { ok: true, token };
 }
 
-async function collect(payload: Record<string, unknown>): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; reason: string }> {
+async function collect(payload: Record<string, unknown>, timeoutMs: number): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; reason: string }> {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const auth = await getToken();
+    const auth = await getToken(timeoutMs);
     if (!auth.ok) return auth;
     let res: Response;
     try {
@@ -102,7 +104,7 @@ async function collect(payload: Record<string, unknown>): Promise<{ ok: true; da
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
         body: JSON.stringify(payload),
         cache: "no-store",
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
       return { ok: false, reason: `連線失敗：${(err as Error)?.message ?? "unknown"}` };
@@ -151,7 +153,7 @@ export async function createGatewayCheckout(input: CheckoutInput): Promise<{ pay
   };
   const limit = process.env.BLACKCAT_LIMIT_PRODUCT_ID?.trim();
   if (limit) payload.limit_product_id = limit;
-  const r = await collect(payload);
+  const r = await collect(payload, CREATE_TIMEOUT_MS);
   if (!r.ok) {
     console.error(`[blackcat] 建單失敗 order=${input.orderId}: ${r.reason}`);
     return null;
@@ -172,7 +174,7 @@ export interface GatewayResult {
 /** 回查（CocsOrderQuery）——付款狀態唯一權威。失敗回 null（APN 應回 500 讓閘道重送）。 */
 export async function queryGatewayPayment(orderId: string): Promise<GatewayResult | null> {
   if (!blackcatConfigured() || !GATEWAY_ORDER_RE.test(orderId)) return null;
-  const r = await collect({ cmd: "CocsOrderQuery", cust_id: custId(), cust_order_no: orderId });
+  const r = await collect({ cmd: "CocsOrderQuery", cust_id: custId(), cust_order_no: orderId }, QUERY_TIMEOUT_MS);
   if (!r.ok) {
     console.error(`[blackcat] 回查失敗 order=${orderId}: ${r.reason}`);
     return null;
@@ -180,5 +182,10 @@ export async function queryGatewayPayment(orderId: string): Promise<GatewayResul
   // 真實回應是扁平的（process_code 在頂層）；保險起見也吃包在 data 裡的形狀
   const inner = r.data.data;
   const data = inner && typeof inner === "object" && !Array.isArray(inner) ? (inner as Record<string, unknown>) : r.data;
+  // L3：回應的 cust_order_no 必須就是我們查的那張（真實回應一定帶這欄，2026-10-28 實測）；不符／缺漏一律當查詢失敗
+  if (!queryMatchesOrder(data, orderId)) {
+    console.error(`[blackcat] 回查回應的 cust_order_no 與查詢不符 order=${orderId}`);
+    return null;
+  }
   return { processCode: toInt(data.process_code), raw: data };
 }

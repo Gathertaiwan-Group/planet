@@ -11,7 +11,7 @@ import {
   type MarkPaidResult,
   type ReconcileDeps,
 } from "../lib/pay/reconcile";
-import { apnChecksum, apnChecksumMatches, apnPaidAmount, classifyProcessCode, isBlackcatPayUrl, sanitizeOrderDetail, taipeiTimestamp, toInt } from "../lib/pay/blackcat-core";
+import { apnChecksum, apnChecksumMatches, apnPaidAmount, classifyProcessCode, isBlackcatPayUrl, queryMatchesOrder, sanitizeOrderDetail, taipeiTimestamp, toInt } from "../lib/pay/blackcat-core";
 
 const OID = "TP261027ABCD2345";
 
@@ -123,6 +123,11 @@ describe("blackcat-core 純函式", () => {
     expect(isBlackcatPayUrl("http://cocs.4128888card.com.tw/x")).toBe(false);
     expect(isBlackcatPayUrl("https://evil4128888card.com.tw/x")).toBe(false);
     expect(isBlackcatPayUrl("https://4128888card.com.tw.evil.com/x")).toBe(false);
+  });
+  it("🔴 L3：回查回應 cust_order_no 必須逐字等於查詢單號（缺漏也不行）", () => {
+    expect(queryMatchesOrder({ cust_order_no: OID, process_code: 15 }, OID)).toBe(true);
+    expect(queryMatchesOrder({ cust_order_no: "TP261027ZZZZ9999", process_code: 15 }, OID)).toBe(false);
+    expect(queryMatchesOrder({ process_code: 15 }, OID)).toBe(false);
   });
   it("send_time 是台北時間", () => {
     expect(taipeiTimestamp(new Date("2026-10-27T16:30:05Z"))).toBe("2026-10-28 00:30:05");

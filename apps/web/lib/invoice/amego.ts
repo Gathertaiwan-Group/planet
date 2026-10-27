@@ -161,7 +161,7 @@ async function syncClock(timeoutMs: number): Promise<number> {
 }
 
 /** 打一支 Amego API。收到 code 15（時鐘漂移）才校時並重送一次。 */
-export async function amegoRequest(path: string, data: unknown, timeoutMs = 15_000): Promise<AmegoResult> {
+export async function amegoRequest(path: string, data: unknown, timeoutMs = 10_000): Promise<AmegoResult> {
   const ban = amegoBan();
   const appKey = amegoAppKey();
   if (!ban || !appKey) return { ok: false, kind: "transport", code: null, msg: "amego_not_configured", http: null };

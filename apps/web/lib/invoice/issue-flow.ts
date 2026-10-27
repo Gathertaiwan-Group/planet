@@ -20,7 +20,7 @@ export interface IssueDeps {
   fail(paymentId: string, error: string, permanent: boolean): Promise<number | null>;
   loadLines(paymentId: string): Promise<InvoiceLine[] | null>;
   issue(input: IssueInvoiceInput): Promise<AmegoResult & { invoice?: IssuedInvoice }>;
-  find(orderRef: string): Promise<{ ok: true; hit: { invoiceNumber: string; randomNumber: string } | null } | { ok: false; msg: string }>;
+  find(orderRef: string): Promise<{ ok: true; hit: { invoiceNumber: string; randomNumber: string; totalAmount: number } | null } | { ok: false; msg: string }>;
   alert(orderRef: string, message: string): Promise<void>;
 }
 
@@ -46,14 +46,20 @@ export async function issueForPayment(paymentId: string, deps: IssueDeps): Promi
     return { ok: false, reason: error, permanent };
   };
 
+  // 認領 Amego 上既有的發票：總額必須等於實收，否則不認、轉人工（L5）
+  const adopt = async (hit: { invoiceNumber: string; randomNumber: string; totalAmount: number }): Promise<IssueOutcome> => {
+    if (hit.totalAmount !== c.amount) {
+      return await failWith(`existing_invoice_amount_mismatch invoice=${hit.invoiceNumber} total=${hit.totalAmount} paid=${c.amount}`, true);
+    }
+    await deps.finish(paymentId, { invoiceNumber: hit.invoiceNumber, randomNumber: hit.randomNumber || null, issuedAt: null });
+    return { ok: true, invoiceNumber: hit.invoiceNumber, adopted: true };
+  };
+
   try {
     // 重試前先問 Amego 是不是其實已經開過
     if (c.attempt > 0) {
       const found = await deps.find(c.orderRef);
-      if (found.ok && found.hit?.invoiceNumber) {
-        await deps.finish(paymentId, { invoiceNumber: found.hit.invoiceNumber, randomNumber: found.hit.randomNumber || null, issuedAt: null });
-        return { ok: true, invoiceNumber: found.hit.invoiceNumber, adopted: true };
-      }
+      if (found.ok && found.hit?.invoiceNumber) return await adopt(found.hit);
     }
 
     const lines = await deps.loadLines(paymentId);
@@ -85,10 +91,7 @@ export async function issueForPayment(paymentId: string, deps: IssueDeps): Promi
     // OrderId 重複 = 已開過 → 查回來認領
     if (result.kind === "business" && result.code === AMEGO_CODE_DUPLICATE_ORDER) {
       const found = await deps.find(c.orderRef);
-      if (found.ok && found.hit?.invoiceNumber) {
-        await deps.finish(paymentId, { invoiceNumber: found.hit.invoiceNumber, randomNumber: found.hit.randomNumber || null, issuedAt: null });
-        return { ok: true, invoiceNumber: found.hit.invoiceNumber, adopted: true };
-      }
+      if (found.ok && found.hit?.invoiceNumber) return await adopt(found.hit);
       return await failWith("duplicate_order_id_but_query_failed", false);
     }
 

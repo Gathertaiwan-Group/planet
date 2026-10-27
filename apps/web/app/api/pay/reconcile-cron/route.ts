@@ -24,15 +24,15 @@ async function handle(req: Request) {
   let result: Record<string, unknown>;
   let status = 200;
   try {
-    const pay = await reconcileOpenPayments();
-    // 發票補開失敗不影響對帳結果（錯誤記在 invoices）
+    // 先補開發票（已收款的事優先），預算 15 秒；再對帳，40 秒後不再開新的回查（單次回查上限 8 秒，maxDuration 60）
     let inv: Record<string, unknown>;
     try {
-      inv = await runInvoiceBacklog();
+      inv = await runInvoiceBacklog({ deadline: started + 15_000 });
     } catch (err) {
       console.error("[pay/cron] 發票補開失敗:", err);
       inv = { invoice_error: String((err as Error)?.message ?? err).slice(0, 200) };
     }
+    const pay = await reconcileOpenPayments({ deadline: started + 40_000 });
     result = { ok: true, ...pay, ...inv };
   } catch (err) {
     console.error("[pay/cron] 對帳失敗:", err);

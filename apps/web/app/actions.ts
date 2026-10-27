@@ -30,7 +30,7 @@ export type RegisterResult =
 
 const REG_ERRORS: Record<string, string> = {
   sold_out: "這場已經額滿了，看看其他場次吧。",
-  duplicate: "這個 Email／手機已經報名過這場囉。",
+  duplicate: "這個 Email 已經報名過這場囉。",
   event_closed: "這場活動已截止報名。",
   event_not_found: "找不到這場活動。",
 };
@@ -38,7 +38,10 @@ const REG_ERRORS: Record<string, string> = {
 export async function registerEvent(input: {
   eventId: string;
   nickname: string;
+  /** Email（必填；電子發票與行前通知寄這裡） */
   contact: string;
+  /** 手機（選填） */
+  phone?: string;
   planetId: number | null;
   issue: string;
   anonId: string | null;
@@ -49,9 +52,11 @@ export async function registerEvent(input: {
   const eventId = str(input?.eventId, 40);
   const planetId = Number.isInteger(input?.planetId) && input.planetId! >= 1 && input.planetId! <= 12 ? input.planetId : null;
   if (!nickname) return { ok: false, error: "請填寫暱稱。" };
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
-  const isPhone = /^[+\d][\d\s-]{6,19}$/.test(contact);
-  if (!isEmail && !isPhone) return { ok: false, error: "請填寫正確的 Email 或手機。" };
+  // M3：Email 必填（B2C 電子發票沒有載具時要寄到 Email），手機選填
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return { ok: false, error: "請填寫正確的 Email（電子發票與行前通知會寄到這裡）。" };
+  const email = contact.toLowerCase();
+  const phoneRaw = str(input?.phone, 20).replace(/[\s-]/g, "");
+  if (phoneRaw && !/^\+?\d{8,15}$/.test(phoneRaw)) return { ok: false, error: "手機號碼格式不正確（可留空）。" };
   if (!/^[0-9a-f-]{36}$/i.test(eventId)) return { ok: false, error: "目前無法報名，請稍後再試。" };
 
   const sb = adminClient();
@@ -59,7 +64,7 @@ export async function registerEvent(input: {
   const { data, error } = await sb.rpc("register_for_event", {
     p_event_id: eventId,
     p_nickname: nickname,
-    p_contact: isEmail ? contact.toLowerCase() : contact.replace(/[\s-]/g, ""),
+    p_contact: email,
     p_planet_id: planetId,
     p_issue: issue,
     p_anon_id: anon(input.anonId),
@@ -72,6 +77,10 @@ export async function registerEvent(input: {
     return { ok: false, error: REG_ERRORS[code] ?? "報名沒有成功，請稍後再試。", seatsLeft };
   }
   const row = (Array.isArray(data) ? data[0] : data) as { registration_id: string; amount_twd: number; seats_left: number };
+  if (phoneRaw) {
+    const { error: pe } = await sb.from("registrations").update({ phone: phoneRaw }).eq("id", row.registration_id);
+    if (pe) console.error("[register] 手機寫入失敗", pe.message);
+  }
   revalidatePath("/events");
   revalidatePath("/");
   if (row.amount_twd <= 0) return { ok: true, seatsLeft: row.seats_left, amount: 0, redirectUrl: null, manualPay: false };
@@ -81,7 +90,7 @@ export async function registerEvent(input: {
     targetId: row.registration_id,
     amount: row.amount_twd,
     detail: await checkoutDetail("reg", row.registration_id),
-    buyerEmail: isEmail ? contact.toLowerCase() : null,
+    buyerEmail: email,
   });
   if (co.ok) return { ok: true, seatsLeft: row.seats_left, amount: row.amount_twd, redirectUrl: `/api/pay/go/${co.gatewayOrderId}`, manualPay: false };
   if (co.reason === "disabled" || co.reason === "below_minimum") {

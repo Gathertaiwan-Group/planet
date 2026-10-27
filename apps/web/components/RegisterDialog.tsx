@@ -55,6 +55,7 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
         eventId: ev.id,
         nickname: String(fd.get("name") ?? ""),
         contact: String(fd.get("contact") ?? ""),
+        phone: String(fd.get("phone") ?? ""),
         planetId: pid > 0 ? pid : null,
         issue: String(fd.get("issue") ?? ""),
         anonId: st.ensureAnonId(),
@@ -112,8 +113,13 @@ export function RegisterDialog({ planets }: { planets: { id: number; name: strin
               <input required name="name" maxLength={40} autoComplete="nickname" className="field" data-autofocus />
             </label>
             <label style={label}>
-              <span>Email 或手機<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
-              <input required name="contact" maxLength={100} autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} className="field" />
+              <span>Email<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
+              <input required name="contact" type="email" inputMode="email" maxLength={100} autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} className="field" aria-describedby="reg-email-note" />
+              <span id="reg-email-note" style={sx("font-size:12px;color:#8e90a8;line-height:1.5")}>行前通知與電子發票會寄到這個信箱</span>
+            </label>
+            <label style={label}>
+              手機（選填）
+              <input name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} pattern="[+0-9\s\-]{8,20}" className="field" />
             </label>
             <label style={label}>
               我的星球

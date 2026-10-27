@@ -99,12 +99,14 @@ export async function triggerInvoiceAfterPayment(paymentId: string, timeoutMs = 
 }
 
 /** 補開待開清單（排程每 10 分鐘） */
-export async function runInvoiceBacklog(limit = 10): Promise<Record<string, number>> {
+export async function runInvoiceBacklog(opts: { limit?: number; deadline: number }): Promise<Record<string, number>> {
+  const limit = opts.limit ?? 10;
   const out: Record<string, number> = { invoice_scanned: 0, invoice_issued: 0, invoice_failed: 0 };
   if (!amegoConfigured()) return out;
   const { data, error } = await db().rpc("invoice_backlog", { p_limit: limit, p_max_retries: MAX_INVOICE_RETRIES });
   if (error) throw new Error(`invoice_backlog 失敗：${error.message}`);
   for (const row of (data ?? []) as { payment_id: string }[]) {
+    if (Date.now() >= opts.deadline) break; // 剩下的下一輪
     out.invoice_scanned += 1;
     const r = await issueInvoiceForPayment(row.payment_id);
     if (r.ok) out.invoice_issued += 1;

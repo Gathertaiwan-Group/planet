@@ -169,3 +169,8 @@ export function sanitizeApnBody(body: Record<string, unknown>): Record<string, u
   }
   return out;
 }
+
+/** 回查回應是否就是查的那一張（cust_order_no 必須逐字相同） */
+export function queryMatchesOrder(data: Record<string, unknown>, orderId: string): boolean {
+  return typeof data.cust_order_no === "string" && data.cust_order_no.trim() === orderId;
+}

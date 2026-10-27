@@ -93,6 +93,7 @@ export const liveDeps: ReconcileDeps = {
       .eq("provider", "blackcat")
       .eq("gateway_order_id", orderId)
       .in("status_code", ["B", "O", "E"])
+      .not("pay_amount", "is", null)
       .order("created_at", { ascending: true })
       .limit(1);
     if (error) throw new Error(`讀取 payment_events 失敗：${error.message}`);
@@ -140,7 +141,7 @@ export async function reconcile(orderId: string, source: string | null, opts: Re
 
 export type CheckoutResult =
   | { ok: true; gatewayOrderId: string; paymentUrl: string }
-  | { ok: false; reason: "disabled" | "below_minimum" | "over_maximum" | "db_failed" | "gateway_failed" | "misconfigured" };
+  | { ok: false; reason: "disabled" | "below_minimum" | "over_maximum" | "db_failed" | "gateway_failed" | "misconfigured" | "superseded" | "not_allowed" };
 
 /**
  * 為一筆訂單／報名開一次付款嘗試：建 payments(init) → 黑貓PAY 建單 → 存刷卡頁網址。
@@ -153,6 +154,8 @@ export async function startCheckout(input: {
   detail: string;
   buyerEmail?: string | null;
   buyerName?: string | null;
+  /** 重新付款時：這次是基於哪一筆付款嘗試（DB 端序列化用；第一次結帳為 null） */
+  basedOn?: string | null;
 }): Promise<CheckoutResult> {
   if (!paymentsEnabled()) return { ok: false, reason: "disabled" };
   // 正式環境沒設 NEXT_PUBLIC_SITE_URL → APN／導回網址不可靠，拒絕建單
@@ -171,24 +174,27 @@ export async function startCheckout(input: {
   const sb = adminClient();
   if (!sb) return { ok: false, reason: "db_failed" };
 
+  // M1：同一目標同時只能有一筆 init（DB partial unique＋目標列鎖）。舊嘗試轉 superseded（仍會被對帳、仍可入帳）。
   let gatewayOrderId = "";
   for (let i = 0; i < 3 && !gatewayOrderId; i++) {
     const id = newGatewayOrderId(new Date(), randomBytes(8));
-    const { error } = await sb.from("payments").insert({
-      gateway: "blackcat",
-      gateway_order_id: id,
-      order_id: input.kind === "order" ? input.targetId : null,
-      registration_id: input.kind === "reg" ? input.targetId : null,
-      amount: input.amount,
-      pay_type: "CARD",
-      buyer_email: input.buyerEmail || null,
-      buyer_name: input.buyerName || null,
+    const { data, error } = await sb.rpc("begin_payment_attempt", {
+      p_kind: input.kind,
+      p_target: input.targetId,
+      p_gateway_order_id: id,
+      p_amount: input.amount,
+      p_buyer_email: input.buyerEmail ?? "",
+      p_buyer_name: input.buyerName ?? "",
+      p_based_on: input.basedOn ?? null,
     });
-    if (!error) gatewayOrderId = id;
-    else if (error.code !== "23505") {
-      console.error("[pay] 建立付款紀錄失敗:", error.message);
+    if (error) {
+      console.error("[pay] begin_payment_attempt 失敗:", error.message);
       return { ok: false, reason: "db_failed" };
     }
+    if (data === "ok") gatewayOrderId = id;
+    else if (data === "superseded") return { ok: false, reason: "superseded" };
+    else if (data === "not_pending" || data === "already_paid") return { ok: false, reason: "not_allowed" };
+    // conflict：付款編號撞號或並發 → 再試（並發的那一方下一輪會拿到 superseded）
   }
   if (!gatewayOrderId) return { ok: false, reason: "db_failed" };
 
@@ -200,6 +206,7 @@ export async function startCheckout(input: {
     successUrl: `${base}/api/pay/return/${gatewayOrderId}`,
   });
   if (!checkout) {
+    // 新單建不起來：這筆標 failed。舊嘗試維持 superseded（客人仍可從舊結果頁重新付款）
     await sb.from("payments").update({ status: "failed" }).eq("gateway_order_id", gatewayOrderId).eq("status", "init");
     return { ok: false, reason: "gateway_failed" };
   }
@@ -276,17 +283,18 @@ export async function getPaymentView(gatewayOrderId: string): Promise<PaymentVie
     .from("payments")
     .select("id", { count: "exact", head: true })
     .eq(kind === "order" ? "order_id" : "registration_id", targetId)
+    .neq("status", "failed")
     .gt("created_at", p.created_at as string);
   return {
     gatewayOrderId,
     kind,
     targetId,
-    paymentStatus: p.status as PaymentView["paymentStatus"],
+    paymentStatus: (p.status === "superseded" ? "init" : p.status) as PaymentView["paymentStatus"],
     targetStatus,
     amount: p.amount as number,
     paymentUrl: (p.payment_url as string) ?? null,
     title,
-    superseded: (count ?? 0) > 0,
+    superseded: p.status === "superseded" && (count ?? 0) > 0,
     gatewayStatus: (p.gateway_status as string) ?? null,
     needsAttention: (p.needs_attention as string) ?? null,
     regStale,
@@ -312,7 +320,7 @@ export async function retryCheckout(gatewayOrderId: string): Promise<CheckoutRes
   const sb = adminClient();
   if (!sb) return { ok: false, reason: "check_failed" };
   const col = v.kind === "order" ? "order_id" : "registration_id";
-  const { data: inits, error } = await sb.from("payments").select("gateway_order_id").eq(col, v.targetId).eq("status", "init");
+  const { data: inits, error } = await sb.from("payments").select("gateway_order_id").eq(col, v.targetId).in("status", ["init", "superseded"]);
   if (error) return { ok: false, reason: "check_failed" };
   for (const row of inits ?? []) {
     const r = await reconcile(row.gateway_order_id as string, "retry_check", { throttle: false });
@@ -322,7 +330,7 @@ export async function retryCheckout(gatewayOrderId: string): Promise<CheckoutRes
   if (e2) return { ok: false, reason: "check_failed" };
   for (const p of all ?? []) {
     if (p.status === "paid" || p.needs_attention) return { ok: false, reason: "in_progress" };
-    if (p.status === "init" && gatewayBlocksRetry(p.gateway_status as string | null)) return { ok: false, reason: "in_progress" };
+    if ((p.status === "init" || p.status === "superseded") && gatewayBlocksRetry(p.gateway_status as string | null)) return { ok: false, reason: "in_progress" };
   }
   const fresh = await getPaymentView(gatewayOrderId);
   if (!fresh || fresh.targetStatus !== "pending") return { ok: false, reason: "not_allowed" };
@@ -335,22 +343,30 @@ export async function retryCheckout(gatewayOrderId: string): Promise<CheckoutRes
     detail: await checkoutDetail(v.kind, v.targetId),
     buyerEmail: v.buyerEmail,
     buyerName: v.buyerName,
+    basedOn: gatewayOrderId,
   });
 }
 
-/** 定期對帳（pg_cron 每 10 分鐘觸發）——近 7 天所有 init 付款嘗試逐筆回查 */
-export async function reconcileOpenPayments(limit = 100): Promise<Record<string, number>> {
+/**
+ * 定期對帳（pg_cron 每 10 分鐘觸發）——近 7 天所有 init／superseded 付款嘗試逐筆回查。
+ * 有時間預算：超過 deadline 就停（剩下的下一輪再查，最舊的優先），避免整支 function 逾時。
+ */
+export async function reconcileOpenPayments(opts: { limit?: number; deadline: number }): Promise<Record<string, number>> {
   const since = new Date(Date.now() - 7 * 86400_000).toISOString();
   const { data, error } = await db()
     .from("payments")
     .select("gateway_order_id")
-    .eq("status", "init")
+    .in("status", ["init", "superseded"])
     .gte("created_at", since)
-    .order("created_at", { ascending: true })
-    .limit(limit);
+    .order("checked_at", { ascending: true, nullsFirst: true })
+    .limit(opts.limit ?? 100);
   if (error) throw new Error(error.message);
-  const counts: Record<string, number> = { checked: 0 };
+  const counts: Record<string, number> = { checked: 0, open: data?.length ?? 0 };
   for (const row of data ?? []) {
+    if (Date.now() >= opts.deadline) {
+      counts.deferred = (data?.length ?? 0) - counts.checked;
+      break;
+    }
     const r = await reconcile(row.gateway_order_id as string, "cron", { throttle: true });
     counts.checked += 1;
     counts[r.outcome] = (counts[r.outcome] ?? 0) + 1;

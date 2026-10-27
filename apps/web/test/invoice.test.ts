@@ -87,7 +87,7 @@ describe("Amego 中繼傳輸", () => {
 });
 
 /** 模擬 planet.invoices 一列＋claim/finish/fail 的 DB 語意 */
-function invoiceWorld(issueResults: (AmegoResult & { invoice?: IssuedInvoice })[], opts: { paid?: number; findHit?: string | null; lines?: InvoiceLine[] | null } = {}) {
+function invoiceWorld(issueResults: (AmegoResult & { invoice?: IssuedInvoice })[], opts: { paid?: number; findHit?: string | null; findTotal?: number; lines?: InvoiceLine[] | null } = {}) {
   const row = { status: "pending", retry: 0, number: null as string | null, lockedAt: 0 };
   const alerts: string[] = [];
   const issued: string[] = [];
@@ -118,7 +118,7 @@ function invoiceWorld(issueResults: (AmegoResult & { invoice?: IssuedInvoice })[
       if (r.ok && r.invoice) issued.push(r.invoice.invoiceNumber);
       return r;
     }),
-    find: vi.fn(async () => ({ ok: true as const, hit: opts.findHit ? { invoiceNumber: opts.findHit, randomNumber: "1234" } : null })),
+    find: vi.fn(async () => ({ ok: true as const, hit: opts.findHit ? { invoiceNumber: opts.findHit, randomNumber: "1234", totalAmount: opts.findTotal ?? opts.paid ?? 680 } : null })),
     alert: async (_o, m) => {
       alerts.push(m);
     },
@@ -155,6 +155,24 @@ describe("issueForPayment（發票開立流程）", () => {
     expect(r2).toEqual({ ok: true, invoiceNumber: "AB00000001", adopted: true });
     expect(w.deps.issue).toHaveBeenCalledTimes(1);
     expect(w.issued).toEqual([]);
+  });
+
+  it("🔴 L5：重試時 Amego 已有發票但總額 ≠ 實收 → 不認領、轉人工、不重開", async () => {
+    const w = invoiceWorld([transportFail], { findHit: "AB00000009", findTotal: 999 });
+    await issueForPayment("p1", w.deps);
+    const r2 = await issueForPayment("p1", w.deps);
+    expect(r2).toMatchObject({ ok: false, permanent: true });
+    expect(w.row.status).toBe("failed");
+    expect(w.row.number).toBeNull();
+    expect(w.alerts.length).toBe(1);
+    expect(w.deps.issue).toHaveBeenCalledTimes(1);
+  });
+
+  it("🔴 L5：3040171 認領時總額不符 → 不認領、轉人工", async () => {
+    const dup: AmegoResult = { ok: false, kind: "business", code: 3040171, msg: "OrderId 重複", data: { code: 3040171, msg: "" }, http: 200 };
+    const w = invoiceWorld([dup], { findHit: "AB00000003", findTotal: 1 });
+    expect(await issueForPayment("p1", w.deps)).toMatchObject({ ok: false, permanent: true });
+    expect(w.row.number).toBeNull();
   });
 
   it("OrderId 重複（3040171）→ 查回來認領", async () => {
