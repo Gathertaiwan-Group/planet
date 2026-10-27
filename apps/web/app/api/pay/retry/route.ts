@@ -19,14 +19,13 @@ function sameOrigin(req: Request): boolean {
   }
 }
 
-/** 重新付款（結果頁表單 POST）：開一筆新的付款嘗試 → 303 到 PChomePay；不允許時回結果頁 */
+/** 重新付款（結果頁表單 POST）：開一筆新的付款嘗試 → 303 到黑貓PAY 刷卡頁；不允許時回結果頁 */
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return new Response("forbidden", { status: 403 });
   const fd = await req.formData().catch(() => null);
   const o = String(fd?.get("o") ?? "");
-  const t = String(fd?.get("pay_type") ?? "CARD").toUpperCase();
   if (!GATEWAY_ORDER_RE.test(o)) return NextResponse.redirect(new URL("/", req.url), 303);
-  const r = await retryCheckout(o, t === "ATM" ? "ATM" : "CARD");
+  const r = await retryCheckout(o);
   if (r.ok) return NextResponse.redirect(r.paymentUrl, 303);
   const back = new URL(`/pay/${o}`, req.url);
   back.searchParams.set("e", r.reason);

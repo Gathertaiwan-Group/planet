@@ -3,16 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { GOLD_ORB, nt } from "@planet/shared";
 import { AutoRefresh, GoPayLink, RetryForm } from "@/components/PayResultClient";
-import { enabledPayTypes } from "@/lib/pay/pchomepay";
-import { GATEWAY_ORDER_RE } from "@/lib/pay/reconcile";
+import { GATEWAY_ORDER_RE, gatewayBlocksRetry } from "@/lib/pay/reconcile";
 import { getPaymentView, reconcile } from "@/lib/pay/service";
 import { sx } from "@/lib/sx";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "付款結果 · 十二星球", robots: { index: false, follow: false } };
-
-const fmtTime = (iso: string) =>
-  new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
 const ERR: Record<string, string> = {
   not_allowed: "這筆付款目前不能重新付款，請重新整理看看最新狀態。",
@@ -26,6 +22,7 @@ const ERR: Record<string, string> = {
   db_failed: "系統忙碌中，請稍後再試一次。",
   disabled: "線上付款暫時關閉，請稍後再試。",
   below_minimum: "金額低於線上付款下限，我們會與你聯繫付款。",
+  over_maximum: "金額超過線上刷卡上限（NT$100,000），請分開下單或與我們聯繫。",
 };
 
 const card = sx("width:min(560px,100%);margin:0 auto;background:#151c38;border:1px solid #2a3358;border-radius:28px;padding:clamp(24px,5vw,40px);display:flex;flex-direction:column;gap:16px");
@@ -49,11 +46,10 @@ export default async function PayResultPage({ params, searchParams }: { params: 
   const paid = v.paymentStatus === "paid" && v.targetStatus !== "cancelled";
   const paidButCancelled = v.paymentStatus === "paid" && v.targetStatus === "cancelled";
   const targetPaidElsewhere = v.paymentStatus !== "paid" && (v.targetStatus === "paid" || v.targetStatus === "shipped");
-  const atmWaiting = v.paymentStatus === "init" && !!v.atm && v.targetStatus === "pending";
   const attention = !!v.needsAttention && v.paymentStatus !== "paid";
-  const processing = !attention && v.paymentStatus === "init" && !v.atm && v.targetStatus === "pending" && (v.gatewayStatus === "P" || v.gatewayStatus === "S");
-  const expired = !attention && v.targetStatus === "pending" && v.regStale && !v.atm;
-  const waiting = !attention && !processing && !expired && v.paymentStatus === "init" && !v.atm && v.targetStatus === "pending";
+  const processing = !attention && v.paymentStatus === "init" && v.targetStatus === "pending" && gatewayBlocksRetry(v.gatewayStatus);
+  const expired = !attention && v.targetStatus === "pending" && v.regStale;
+  const waiting = !attention && !processing && !expired && v.paymentStatus === "init" && v.targetStatus === "pending";
   const failed = !attention && !expired && v.paymentStatus === "failed" && v.targetStatus === "pending";
   const cancelled = v.targetStatus === "cancelled" && v.paymentStatus !== "paid";
   const backHref = isOrder ? "/shop" : "/events";
@@ -72,7 +68,7 @@ export default async function PayResultPage({ params, searchParams }: { params: 
             <span className="wk" style={sx("font-size:30px;font-weight:700")}>{isOrder ? "寶寶出發囉！" : "報名成功，到時候見！"}</span>
             <span style={muted}>
               {isOrder
-                ? `已收到 ${nt(v.amount)}，訂單成立。出貨通知會傳到你的手機。`
+                ? `已收到 ${nt(v.amount)}，訂單成立。出貨通知會傳到你的手機，電子發票會寄到你填的 Email。`
                 : `已收到報名費 ${nt(v.amount)}。行前通知會在活動前 3 天寄出，別忘了帶你的星球寶寶。`}
             </span>
             <Link href={isOrder ? "/events" : "/"} className="h-bg-gold" style={sx("align-self:flex-start;background:#f0c96e;color:#10162e;border-radius:999px;padding:14px 24px;font-size:16px;font-weight:600;text-decoration:none")}>
@@ -88,31 +84,6 @@ export default async function PayResultPage({ params, searchParams }: { params: 
           </>
         )}
 
-        {atmWaiting && v.atm && (
-          <>
-            <span className="wk" style={sx("font-size:26px;font-weight:700")}>請在期限內完成 ATM 轉帳</span>
-            <dl style={sx("display:grid;grid-template-columns:auto 1fr;gap:10px 16px;margin:0;font-size:16px;background:#19213f;border-radius:18px;padding:18px")}>
-              {v.atm.bankCode && (
-                <>
-                  <dt style={sx("color:#aeb0c6")}>銀行代碼</dt>
-                  <dd style={sx("margin:0;font-weight:600")}>{v.atm.bankCode}</dd>
-                </>
-              )}
-              <dt style={sx("color:#aeb0c6")}>虛擬帳號</dt>
-              <dd style={sx("margin:0;font-weight:700;font-size:20px;letter-spacing:.06em;word-break:break-all")}>{v.atm.account}</dd>
-              <dt style={sx("color:#aeb0c6")}>金額</dt>
-              <dd style={sx("margin:0;font-weight:600;color:#f0c96e")}>{nt(v.amount)}</dd>
-              {v.atm.expireAt && (
-                <>
-                  <dt style={sx("color:#aeb0c6")}>繳費期限</dt>
-                  <dd style={sx("margin:0;font-weight:600")}>{fmtTime(v.atm.expireAt)}</dd>
-                </>
-              )}
-            </dl>
-            <span style={sx("font-size:14px;line-height:1.7;color:#8e90a8")}>轉帳完成後系統會自動確認，可以回到這一頁查看狀態。{isOrder ? "" : "名額會保留到繳費期限。"}</span>
-          </>
-        )}
-
         {attention && (
           <>
             <span className="wk" style={sx("font-size:26px;font-weight:700")}>需要人工確認</span>
@@ -124,7 +95,7 @@ export default async function PayResultPage({ params, searchParams }: { params: 
           <>
             <AutoRefresh />
             <span className="wk" style={sx("font-size:26px;font-weight:700")}>付款處理中…</span>
-            <span style={muted}>付款服務正在處理這筆款項，完成後這頁會自動更新。為避免重複扣款，請不要重新付款。</span>
+            <span style={muted}>刷卡已授權，正在確認款項，完成後這頁會自動更新。為避免重複扣款，請不要重新付款。</span>
           </>
         )}
 
@@ -139,10 +110,10 @@ export default async function PayResultPage({ params, searchParams }: { params: 
           <>
             <AutoRefresh />
             <span className="wk" style={sx("font-size:26px;font-weight:700")}>正在確認付款…</span>
-            <span style={muted}>如果你已經付款，請稍等幾秒，這頁會自動更新。還沒付款的話，可以回到付款頁繼續。</span>
+            <span style={muted}>如果你已經刷卡，請稍等幾秒，這頁會自動更新。還沒付款（或刷卡沒有成功）的話，可以回到付款頁繼續。</span>
             {!v.superseded && v.paymentUrl && <GoPayLink orderNo={v.gatewayOrderId} />}
-            {!v.superseded && <RetryForm orderNo={v.gatewayOrderId} payTypes={enabledPayTypes()} />}
-            {!v.superseded && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>付款頁開啟超過 10 分鐘會失效，請改按「重新付款」開新的付款頁。</span>}
+            {!v.superseded && <RetryForm orderNo={v.gatewayOrderId} />}
+            {!v.superseded && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>刷卡頁打不開或已失效時，請改按「重新付款」開新的付款頁。付款由黑貓PAY（統一金流）處理。</span>}
             {!isOrder && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>報名未付款的名額會保留 2 小時。</span>}
             {v.superseded && <span style={sx("font-size:13px;line-height:1.6;color:#8e90a8")}>這是較早的付款連結，你已經開過新的付款頁；請使用最新的付款頁完成付款。</span>}
           </>
@@ -151,8 +122,8 @@ export default async function PayResultPage({ params, searchParams }: { params: 
         {failed && (
           <>
             <span className="wk" style={sx("font-size:26px;font-weight:700")}>付款沒有完成</span>
-            <span style={muted}>{isOrder ? "訂單還保留著" : "報名還保留著"}，可以再試一次，或換一種付款方式。</span>
-            {!v.superseded && <RetryForm orderNo={v.gatewayOrderId} payTypes={enabledPayTypes()} />}
+            <span style={muted}>{isOrder ? "訂單還保留著" : "報名還保留著"}，可以再試一次，或換一張卡。</span>
+            {!v.superseded && <RetryForm orderNo={v.gatewayOrderId} />}
           </>
         )}
 

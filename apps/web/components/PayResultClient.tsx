@@ -22,33 +22,27 @@ export function AutoRefresh({ tries = 8 }: { tries?: number }) {
 const btn = sx("border:0;border-radius:999px;padding:14px 22px;font-size:16px;font-weight:600;cursor:pointer;min-height:48px");
 
 /** 重新付款表單：送出後按鈕 loading，防重複送出 */
-export function RetryForm({ orderNo, payTypes }: { orderNo: string; payTypes: ("CARD" | "ATM")[] }) {
-  const [busy, setBusy] = useState<string | null>(null);
+export function RetryForm({ orderNo }: { orderNo: string }) {
+  const [busy, setBusy] = useState(false);
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     if (busy) {
       e.preventDefault();
       return;
     }
-    const sub = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    setBusy(sub?.value ?? "CARD");
+    setBusy(true);
   }
   return (
     <form method="post" action="/api/pay/retry" onSubmit={onSubmit} style={sx("display:flex;flex-wrap:wrap;gap:10px")}>
       <input type="hidden" name="o" value={orderNo} />
-      {payTypes.map((t, i) => (
-        <button
-          key={t}
-          type="submit"
-          name="pay_type"
-          value={t}
-          disabled={!!busy}
-          aria-busy={busy === t}
-          className={i === 0 ? "h-bg-gold" : undefined}
-          style={{ ...btn, background: i === 0 ? "#f0c96e" : "#2a3358", color: i === 0 ? "#10162e" : "#f6f0e1", opacity: busy && busy !== t ? 0.5 : 1 }}
-        >
-          {busy === t ? "前往付款頁…" : t === "CARD" ? "重新付款（信用卡）" : "改用 ATM 轉帳"}
-        </button>
-      ))}
+      <button
+        type="submit"
+        disabled={busy}
+        aria-busy={busy}
+        className="h-bg-gold"
+        style={{ ...btn, background: "#f0c96e", color: "#10162e", opacity: busy ? 0.7 : 1 }}
+      >
+        {busy ? "前往付款頁…" : "重新付款（信用卡）"}
+      </button>
     </form>
   );
 }

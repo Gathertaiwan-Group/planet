@@ -52,6 +52,7 @@ export function CartDrawer() {
       const r = await createOrder({
         recipient: String(fd.get("name") ?? ""),
         phone: String(fd.get("phone") ?? ""),
+        email: String(fd.get("email") ?? ""),
         shipping: String(fd.get("ship") ?? ""),
         payment: String(fd.get("pay") ?? ""),
         items,
@@ -160,6 +161,11 @@ export function CartDrawer() {
               <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} pattern="[+0-9\s\-]{8,20}" className="field" />
             </label>
             <label style={label}>
+              <span>Email<span aria-hidden="true" style={sx("color:#f2a99a;margin-left:2px")}>*</span></span>
+              <input required name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={100} className="field" aria-describedby="email-note" />
+              <span id="email-note" style={sx("font-size:12px;color:#8e90a8;line-height:1.5")}>付款完成後，電子發票會寄到這個信箱</span>
+            </label>
+            <label style={label}>
               取貨方式
               <select name="ship" className="field">
                 {SHIPPING_OPTIONS.map((o) => (
@@ -174,7 +180,7 @@ export function CartDrawer() {
                   <option key={o}>{o}</option>
                 ))}
               </select>
-              <span id="pay-note" style={sx("font-size:12px;color:#8e90a8;line-height:1.5")}>下單後會前往 PChomePay 支付連安全付款頁</span>
+              <span id="pay-note" style={sx("font-size:12px;color:#8e90a8;line-height:1.5")}>下單後會前往黑貓PAY（統一金流）信用卡安全付款頁</span>
             </label>
             <div style={sx("display:flex;justify-content:space-between;font-size:20px;font-weight:700;margin-top:auto;padding-top:12px")}>
               <span>合計</span>

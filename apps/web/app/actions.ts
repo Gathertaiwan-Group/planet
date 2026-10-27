@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isLetter, PAYMENT_OPTIONS, scorePlanet, SHIPPING_OPTIONS, type OrderItemInput } from "@planet/shared";
 import { getCatalog } from "@/lib/data";
-import { startCheckout } from "@/lib/pay/service";
+import { checkoutDetail, startCheckout } from "@/lib/pay/service";
 import { adminClient } from "@/lib/supabase";
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -23,7 +23,7 @@ export async function saveQuizResult(input: { answers: string[]; anonId: string 
   return { ok: !error, planetId };
 }
 
-/** manualPay：需付款但無法線上付（金額 1–29 元低於 PChomePay 下限，或金流未設定）→ 人工聯繫收費 */
+/** manualPay：需付款但無法線上付（金流未設定）→ 人工聯繫收費 */
 export type RegisterResult =
   | { ok: true; seatsLeft: number; amount: number; redirectUrl: string | null; manualPay: boolean }
   | { ok: false; error: string; seatsLeft?: number };
@@ -80,9 +80,7 @@ export async function registerEvent(input: {
     kind: "reg",
     targetId: row.registration_id,
     amount: row.amount_twd,
-    payTypes: ["CARD", "ATM"],
-    itemName: "十二星球｜聚會報名費",
-    itemPath: "/events",
+    detail: await checkoutDetail("reg", row.registration_id),
     buyerEmail: isEmail ? contact.toLowerCase() : null,
   });
   if (co.ok) return { ok: true, seatsLeft: row.seats_left, amount: row.amount_twd, redirectUrl: `/api/pay/go/${co.gatewayOrderId}`, manualPay: false };
@@ -110,6 +108,7 @@ const ORDER_ERRORS: Record<string, string> = {
 export async function createOrder(input: {
   recipient: string;
   phone: string;
+  email: string;
   shipping: string;
   payment: string;
   items: OrderItemInput[];
@@ -119,6 +118,8 @@ export async function createOrder(input: {
   const phone = str(input?.phone, 20).replace(/[\s-]/g, "");
   if (!recipient) return { ok: false, error: "請填寫收件人。" };
   if (!/^\+?\d{8,15}$/.test(phone)) return { ok: false, error: "請填寫正確的手機號碼。" };
+  const email = str(input?.email, 100).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "請填寫正確的 Email（電子發票會寄到這裡）。" };
   if (!(SHIPPING_OPTIONS as readonly string[]).includes(input?.shipping)) return { ok: false, error: "請選擇取貨方式。" };
   if (!(PAYMENT_OPTIONS as readonly string[]).includes(input?.payment)) return { ok: false, error: "請選擇付款方式。" };
   const raw = Array.isArray(input?.items) ? input.items.slice(0, 50) : [];
@@ -156,11 +157,15 @@ export async function createOrder(input: {
     kind: "order",
     targetId: row.order_id,
     amount: row.total_twd,
-    payTypes: [input.payment === "ATM 轉帳" ? "ATM" : "CARD"],
-    itemName: "十二星球｜星球寶寶訂單",
-    itemPath: "/shop",
+    detail: await checkoutDetail("order", row.order_id),
+    buyerEmail: email,
+    buyerName: recipient,
   });
   if (co.ok) return { ok: true, orderId: row.order_id, total: row.total_twd, redirectUrl: `/api/pay/go/${co.gatewayOrderId}`, manualPay: false };
+  if (co.reason === "over_maximum") {
+    await sb.from("orders").update({ status: "cancelled" }).eq("id", row.order_id).eq("status", "pending");
+    return { ok: false, error: "單筆金額超過線上刷卡上限 NT$100,000，請分開下單。" };
+  }
   if (co.reason === "disabled" || co.reason === "below_minimum") {
     return { ok: true, orderId: row.order_id, total: row.total_twd, redirectUrl: null, manualPay: true };
   }

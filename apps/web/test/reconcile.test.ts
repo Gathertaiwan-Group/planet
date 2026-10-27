@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  classifyGatewayStatus,
-  extractAtmInfo,
+  AWAITING_APN_ALERT_MS,
+  gatewayBlocksRetry,
   GATEWAY_ORDER_RE,
   newGatewayOrderId,
-  parseGatewayDate,
-  parseGatewayPayment,
   reconcileOrder,
   redactBody,
   sanitizeRaw,
@@ -13,22 +11,32 @@ import {
   type MarkPaidResult,
   type ReconcileDeps,
 } from "../lib/pay/reconcile";
+import { apnChecksum, apnChecksumMatches, apnPaidAmount, classifyProcessCode, isBlackcatPayUrl, sanitizeOrderDetail, taipeiTimestamp, toInt } from "../lib/pay/blackcat-core";
 
 const OID = "TP261027ABCD2345";
 
-/** 模擬 DB：payments 一筆、目標（訂單／報名）一筆，markPaid 依 mark_payment_paid 的語意實作 */
-function setup(opts: { gateway: GatewayResult | null; paymentStatus?: string; targetStatus?: string; amount?: number; found?: boolean; claim?: boolean }) {
+/** 模擬 DB：payments 一筆、目標一筆；markPaid 依 mark_blackcat_paid 的語意實作 */
+function setup(opts: {
+  gateway: GatewayResult | null;
+  paymentStatus?: string;
+  targetStatus?: string;
+  amount?: number;
+  found?: boolean;
+  claim?: boolean;
+  stored?: { amount: number | null; transId: string } | null;
+  createdAt?: string;
+}) {
   const db = {
     paymentStatus: opts.paymentStatus ?? "init",
     targetStatus: opts.targetStatus ?? "pending",
     amount: opts.amount ?? 680,
     attention: null as string | null,
-    atm: null as null | { account: string },
     checked: null as string | null,
     alerts: [] as string[],
+    invoices: 0,
   };
   const deps: ReconcileDeps = {
-    findPayment: vi.fn(async () => (opts.found === false ? null : { status: db.paymentStatus })),
+    findPayment: vi.fn(async () => (opts.found === false ? null : { status: db.paymentStatus, createdAt: opts.createdAt ?? new Date().toISOString() })),
     claimCheck: vi.fn(async () => opts.claim !== false),
     recordCheck: vi.fn(async (_id: string, st: string | null) => {
       db.checked = st;
@@ -37,224 +45,213 @@ function setup(opts: { gateway: GatewayResult | null; paymentStatus?: string; ta
       db.alerts.push(reason);
     }),
     query: vi.fn(async () => opts.gateway),
-    markPaid: vi.fn(async (_id: string, amount: number): Promise<MarkPaidResult> => {
-      if (db.paymentStatus === "paid") return { result: "already_paid", transitioned: false, kind: "order", target_id: "o1" };
-      if (amount !== db.amount) {
+    storedApnAmount: vi.fn(async () => opts.stored ?? null),
+    markPaid: vi.fn(async (_id: string, amount: number | null): Promise<MarkPaidResult> => {
+      if (db.paymentStatus === "paid") return { result: "already_paid", transitioned: false, kind: "order", target_id: "o1", payment_id: "p1" };
+      if (amount === null || amount !== db.amount) {
         const isNew = db.attention !== "amount_mismatch";
         db.attention = "amount_mismatch";
-        return { result: "amount_mismatch", transitioned: false, attention_new: isNew, kind: "order", target_id: "o1" };
+        return { result: "amount_mismatch", transitioned: false, attention_new: isNew, kind: "order", target_id: "o1", payment_id: "p1" };
       }
       db.paymentStatus = "paid";
       if (db.targetStatus === "pending") {
         db.targetStatus = "paid";
-        return { result: "paid", transitioned: true, kind: "order", target_id: "o1" };
+        db.invoices += 1;
+        return { result: "paid", transitioned: true, kind: "order", target_id: "o1", payment_id: "p1" };
       }
       db.attention = db.targetStatus === "cancelled" ? "paid_after_cancel" : "duplicate_payment";
-      return { result: "needs_attention", reason: db.attention, transitioned: false, attention_new: true, kind: "order", target_id: "o1" };
-    }),
-    recordAtm: vi.fn(async (_id, info) => {
-      db.atm = { account: info.account };
+      return { result: "needs_attention", reason: db.attention, transitioned: false, attention_new: true, kind: "order", target_id: "o1", payment_id: "p1" };
     }),
     markFailed: vi.fn(async () => {
       if (db.paymentStatus === "init") db.paymentStatus = "failed";
+    }),
+    flagAttention: vi.fn(async (_id: string, reason: string) => {
+      const isNew = db.attention !== reason;
+      db.attention = reason;
+      return isNew;
     }),
     onPaid: vi.fn(async () => {}),
   };
   return { db, deps };
 }
 
-describe("classifyGatewayStatus", () => {
-  it("S = paid（即使 status_code 是 null）", () => {
-    expect(classifyGatewayStatus({ status: "S" })).toBe("paid");
-    expect(classifyGatewayStatus({ status: " s " })).toBe("paid");
+const q = (processCode: number | null): GatewayResult => ({ processCode, raw: { cust_order_no: OID, process_code: processCode, order_amount: 680, grant_amount: 665 } });
+
+describe("classifyProcessCode", () => {
+  it("15/20/21/22 = 已授權", () => {
+    for (const c of [15, 20, 21, 22]) expect(classifyProcessCode(c)).toBe("paid");
   });
-  it("F = failed", () => expect(classifyGatewayStatus({ status: "F" })).toBe("failed"));
-  it("P / W / 未知 = pending", () => {
-    expect(classifyGatewayStatus({ status: "P" })).toBe("pending");
-    expect(classifyGatewayStatus({ status: "W" })).toBe("pending");
-    expect(classifyGatewayStatus({})).toBe("pending");
+  it("13/14（刷卡頁、繳款人確認）不是付款成功", () => {
+    expect(classifyProcessCode(13)).toBe("pending");
+    expect(classifyProcessCode(14)).toBe("pending");
   });
-  it("只有 status_code 看起來成功也不算 paid（以 status 為準）", () => {
-    expect(classifyGatewayStatus({ status: "W", status_code: "00" })).toBe("pending");
+  it("5/6/16/17/27 = 失敗；23 = 請款失敗需人工；null = pending", () => {
+    for (const c of [5, 6, 16, 17, 27]) expect(classifyProcessCode(c)).toBe("failed");
+    expect(classifyProcessCode(23)).toBe("attention");
+    expect(classifyProcessCode(null)).toBe("pending");
   });
 });
 
-describe("parseGatewayPayment（sandbox 實際回應形狀）", () => {
-  it("amount 為字串、status W、payment_info null", () => {
-    const q = parseGatewayPayment({ order_id: OID, amount: "30", pay_type: "COMPLEX", status: "W", status_code: null, payment_info: null });
-    expect(q).toMatchObject({ status: "W", amount: 30, pay_type: "COMPLEX", status_code: undefined, payment_info: undefined });
-    expect(classifyGatewayStatus(q)).toBe("pending");
+describe("blackcat-core 純函式", () => {
+  it("APN checksum = MD5(api_id:trans_id:amount:status:nonce)，用原樣字串、大小寫不敏感", () => {
+    const f = { apiId: "CC0000000001", transId: "550e8400-e29b", amount: 680, status: "B", nonce: "1234567890" };
+    const sum = apnChecksum(f);
+    expect(sum).toMatch(/^[0-9a-f]{32}$/);
+    expect(apnChecksumMatches({ ...f, checksum: sum })).toBe(true);
+    expect(apnChecksumMatches({ ...f, checksum: sum.toUpperCase() })).toBe(true);
+    expect(apnChecksumMatches({ ...f, amount: "680.0", checksum: sum })).toBe(false);
+    expect(apnChecksumMatches({ ...f, checksum: "x" })).toBe(false);
   });
-  it("pay_type 陣列、amount 數字", () => {
-    expect(parseGatewayPayment({ amount: 680, pay_type: ["CARD"], status: "s" })).toMatchObject({ amount: 680, pay_type: "CARD", status: "S" });
+  it("實收金額只認 payment_detail.pay_amount，不 fallback 到 amount", () => {
+    expect(apnPaidAmount({ amount: 680, payment_detail: { pay_amount: 680 } })).toBe(680);
+    expect(apnPaidAmount({ amount: 680, payment_detail: { pay_amount: "500" } })).toBe(500);
+    expect(apnPaidAmount({ amount: 680 })).toBeNull();
+    expect(apnPaidAmount({ amount: 680, payment_detail: { grant_amount: 665 } })).toBeNull();
   });
-  it("amount 空字串 → undefined", () => expect(parseGatewayPayment({ amount: "" }).amount).toBeUndefined());
+  it("toInt：空字串是 null 不是 0", () => {
+    expect(toInt("")).toBeNull();
+    expect(toInt(" 12 ")).toBe(12);
+    expect(toInt(0)).toBe(0);
+  });
+  it("order_detail 去 HTML、必填", () => {
+    expect(sanitizeOrderDetail("<b>寶寶</b> x1")).toBe("寶寶 x1");
+    expect(sanitizeOrderDetail("<>")).toBe("十二星球訂單");
+    expect(sanitizeOrderDetail("a".repeat(600)).length).toBe(500);
+  });
+  it("刷卡頁網址只接受 4128888card.com.tw 的 https", () => {
+    expect(isBlackcatPayUrl("https://cocs.4128888card.com.tw/Pay/abc")).toBe(true);
+    expect(isBlackcatPayUrl("http://cocs.4128888card.com.tw/x")).toBe(false);
+    expect(isBlackcatPayUrl("https://evil4128888card.com.tw/x")).toBe(false);
+    expect(isBlackcatPayUrl("https://4128888card.com.tw.evil.com/x")).toBe(false);
+  });
+  it("send_time 是台北時間", () => {
+    expect(taipeiTimestamp(new Date("2026-10-27T16:30:05Z"))).toBe("2026-10-28 00:30:05");
+  });
 });
 
-describe("order id / ATM 解析", () => {
-  it("TP + 台北日期 + 8 碼", () => {
-    const id = newGatewayOrderId(new Date("2026-10-27T17:00:00Z"), new Uint8Array([0, 1, 2, 3, 4, 5, 6, 255]));
-    expect(id).toMatch(GATEWAY_ORDER_RE);
-    expect(id.startsWith("TP261028")).toBe(true); // UTC 17:00 = 台北隔天 01:00
-    expect(id).toHaveLength(16);
+describe("order id", () => {
+  it("TP + yyMMdd(台北) + 8 碼，符合 regex", () => {
+    const id = newGatewayOrderId(new Date("2026-10-27T17:00:00Z"), new Uint8Array([0, 1, 2, 3, 4, 5, 6, 33]));
+    expect(id).toBe("TP2610280123456Z");
+    expect(GATEWAY_ORDER_RE.test(id)).toBe(true);
+    expect(GATEWAY_ORDER_RE.test("IB-202600000001")).toBe(false);
   });
-  it("ATM 帳號與期限", () => {
-    const a = extractAtmInfo({ payment_info: { bank_code: "822", virtual_account: "9999123456789012", expire_date: "2026/10/30 23:59:59" } });
-    expect(a?.account).toBe("9999123456789012");
-    expect(a?.bankCode).toBe("822");
-    expect(a?.expireAt?.toISOString()).toBe("2026-10-30T15:59:59.000Z");
-    expect(extractAtmInfo({ payment_info: undefined })).toBeNull();
+  it("redactBody 去 email 與長數字", () => {
+    expect(redactBody('{"email":"a@b.co","card":"4111111111111111"}')).toBe('{"email":"[email]","card":"[num]"}');
   });
-  it("parseGatewayDate 各格式", () => {
-    expect(parseGatewayDate("20261030235959")?.toISOString()).toBe("2026-10-30T15:59:59.000Z");
-    expect(parseGatewayDate("2026-10-30")?.toISOString()).toBe("2026-10-30T15:59:59.000Z");
-    expect(parseGatewayDate("garbage")).toBeNull();
+  it("sanitizeRaw 只留白名單", () => {
+    expect(sanitizeRaw({ process_code: 15, card_no: "4111", order_amount: 680 })).toEqual({ process_code: 15, order_amount: 680 });
   });
 });
 
-describe("reconcileOrder（notify 處理）", () => {
-  it("回查 S 且金額相符 → paid、只觸發一次副作用", async () => {
-    const { db, deps } = setup({ gateway: { status: "S", amount: 680, raw: {} } });
-    const r = await reconcileOrder(OID, "order_confirm", deps);
-    expect(r).toEqual({ http: 200, outcome: "paid" });
+describe("reconcileOrder", () => {
+  it("APN 帶實收金額＋回查已授權 → paid、建發票、onPaid 一次", async () => {
+    const { db, deps } = setup({ gateway: q(15) });
+    const r = await reconcileOrder(OID, "apn_B", deps, { apn: { amount: 680, transId: "t1" } });
+    expect(r).toEqual({ http: 200, outcome: "paid", processCode: 15 });
     expect(db.targetStatus).toBe("paid");
+    expect(db.invoices).toBe(1);
+    expect(db.checked).toBe("15");
     expect(deps.onPaid).toHaveBeenCalledTimes(1);
+    expect(deps.onPaid).toHaveBeenCalledWith("order", "o1", "p1");
   });
 
-  it("重複 notify → already_paid、不再觸發副作用", async () => {
-    const { deps } = setup({ gateway: { status: "S", amount: 680 } });
-    await reconcileOrder(OID, "order_confirm", deps);
-    const r2 = await reconcileOrder(OID, "order_confirm", deps);
-    expect(r2).toEqual({ http: 200, outcome: "already_paid" });
-    expect(deps.onPaid).toHaveBeenCalledTimes(1);
-  });
-
-  it("金額不符 → 不標記 paid", async () => {
-    const { db, deps } = setup({ gateway: { status: "S", amount: 30 } });
-    const r = await reconcileOrder(OID, "order_confirm", deps);
-    expect(r.outcome).toBe("amount_mismatch");
-    expect(db.targetStatus).toBe("pending");
-    expect(db.paymentStatus).toBe("init");
-    expect(db.attention).toBe("amount_mismatch");
-    expect(deps.onPaid).not.toHaveBeenCalled();
-  });
-
-  it("偽造 notify（payload 說已付，但回查是 W）→ 不標記 paid", async () => {
-    const { db, deps } = setup({ gateway: { status: "W", amount: 680 } });
-    const r = await reconcileOrder(OID, "order_confirm", deps);
-    expect(r).toEqual({ http: 200, outcome: "pending" });
+  it("🔴 偽造：checksum 正確但回查非授權（13）→ 不標記付款", async () => {
+    const { db, deps } = setup({ gateway: q(13) });
+    const r = await reconcileOrder(OID, "apn_B", deps, { apn: { amount: 680, transId: "t1" } });
+    expect(r.outcome).toBe("pending");
     expect(deps.markPaid).not.toHaveBeenCalled();
+    expect(db.paymentStatus).toBe("init");
+  });
+
+  it("🔴 金額不符（實收 500 ≠ 應收 680）→ 不標記、只通知一次", async () => {
+    const { db, deps } = setup({ gateway: q(15) });
+    const r1 = await reconcileOrder(OID, "apn_B", deps, { apn: { amount: 500, transId: "t1" } });
+    expect(r1.outcome).toBe("amount_mismatch");
     expect(db.targetStatus).toBe("pending");
-  });
-
-
-  it("回查 F → 付款嘗試標 failed（訂單不動）", async () => {
-    const { db, deps } = setup({ gateway: { status: "F" } });
-    const r = await reconcileOrder(OID, "order_failed", deps);
-    expect(r.outcome).toBe("failed");
-    expect(db.paymentStatus).toBe("failed");
-    expect(db.targetStatus).toBe("pending");
-  });
-
-  it("已付款後遲到的 F 不會覆蓋 paid", async () => {
-    const { db, deps } = setup({ gateway: { status: "F" }, paymentStatus: "paid", targetStatus: "paid" });
-    const r = await reconcileOrder(OID, "order_failed", deps);
-    expect(r.outcome).toBe("already_paid");
-    expect(deps.markFailed).not.toHaveBeenCalled();
-    expect(db.paymentStatus).toBe("paid");
-  });
-
-  it("目標已 cancelled → needs_attention，不改回 paid、不觸發副作用", async () => {
-    const { db, deps } = setup({ gateway: { status: "S", amount: 680 }, targetStatus: "cancelled" });
-    const r = await reconcileOrder(OID, "order_confirm", deps);
-    expect(r.outcome).toBe("needs_attention");
-    expect(db.targetStatus).toBe("cancelled");
-    expect(db.attention).toBe("paid_after_cancel");
+    expect(db.invoices).toBe(0);
+    await reconcileOrder(OID, "apn_O", deps, { apn: { amount: 500, transId: "t1" } });
+    expect(db.alerts).toEqual(["amount_mismatch"]);
     expect(deps.onPaid).not.toHaveBeenCalled();
   });
 
-  it("回查失敗 → 500 讓閘道重送", async () => {
-    const { deps } = setup({ gateway: null });
-    expect(await reconcileOrder(OID, null, deps)).toEqual({ http: 500, outcome: "query_failed" });
+  it("🔴 APN 缺 pay_amount → 視為金額不符，不拿 order_amount 充數", async () => {
+    const { db, deps } = setup({ gateway: q(15) });
+    const r = await reconcileOrder(OID, "apn_B", deps, { apn: { amount: null, transId: "t1" } });
+    expect(r.outcome).toBe("amount_mismatch");
+    expect(db.paymentStatus).toBe("init");
   });
 
-  it("回查 S 但缺金額 → 500", async () => {
-    const { deps } = setup({ gateway: { status: "S" } });
-    expect((await reconcileOrder(OID, null, deps)).http).toBe(500);
+  it("排程：已授權但還沒收到 APN → 不標記（awaiting_apn），30 分鐘後才通知且只通知一次", async () => {
+    const fresh = setup({ gateway: q(15) });
+    expect((await reconcileOrder(OID, "cron", fresh.deps)).outcome).toBe("awaiting_apn");
+    expect(fresh.deps.markPaid).not.toHaveBeenCalled();
+    expect(fresh.db.alerts).toEqual([]);
+
+    const old = setup({ gateway: q(15), createdAt: new Date(Date.now() - AWAITING_APN_ALERT_MS - 1000).toISOString() });
+    await reconcileOrder(OID, "cron", old.deps);
+    await reconcileOrder(OID, "cron", old.deps);
+    expect(old.db.alerts).toEqual(["authorized_without_apn"]);
+    expect(old.db.paymentStatus).toBe("init");
   });
 
-  it("DB 寫入失敗 → 500", async () => {
-    const { deps } = setup({ gateway: { status: "S", amount: 680 } });
-    deps.markPaid = vi.fn(async () => null);
-    expect(await reconcileOrder(OID, null, deps)).toEqual({ http: 500, outcome: "db_failed" });
+  it("排程：已授權且先前已存 APN 實收金額 → 補入帳", async () => {
+    const { db, deps } = setup({ gateway: q(21), stored: { amount: 680, transId: "t1" } });
+    const r = await reconcileOrder(OID, "cron", deps);
+    expect(r.outcome).toBe("paid");
+    expect(db.invoices).toBe(1);
   });
 
-  it("未知單號／非 TP 單號 → 200 unknown_order，不回查", async () => {
-    const a = setup({ gateway: { status: "S", amount: 680 }, found: false });
-    expect(await reconcileOrder(OID, null, a.deps)).toEqual({ http: 200, outcome: "unknown_order" });
-    expect(a.deps.query).not.toHaveBeenCalled();
-    const b = setup({ gateway: { status: "S", amount: 680 } });
-    expect((await reconcileOrder("DD2610270000AA", null, b.deps)).outcome).toBe("unknown_order");
-    expect(b.deps.findPayment).not.toHaveBeenCalled();
+  it("重送冪等：第二次只回 already_paid、onPaid 不再呼叫、發票不重建", async () => {
+    const { db, deps } = setup({ gateway: q(15) });
+    await reconcileOrder(OID, "apn_B", deps, { apn: { amount: 680, transId: "t1" } });
+    const r2 = await reconcileOrder(OID, "apn_E", deps, { apn: { amount: 680, transId: "t1" } });
+    expect(r2.outcome).toBe("already_paid");
+    expect(deps.onPaid).toHaveBeenCalledTimes(1);
+    expect(db.invoices).toBe(1);
   });
 
-  it("ATM 取號（W + payment_info）→ 記錄虛擬帳號", async () => {
-    const { db, deps } = setup({ gateway: { status: "W", amount: 680, payment_info: { virtual_account: "9999000011112222", expire_date: "2026/10/30 23:59:59" } } });
-    expect((await reconcileOrder(OID, null, deps)).outcome).toBe("atm_issued");
-    expect(db.atm?.account).toBe("9999000011112222");
-  });
-
-  it("金額不符 → 第一次寄通知、重複 notify 不重寄", async () => {
-    const { db, deps } = setup({ gateway: { status: "S", amount: 30 } });
-    await reconcileOrder(OID, null, deps);
-    await reconcileOrder(OID, null, deps);
-    expect(db.alerts).toEqual(["amount_mismatch"]);
-  });
-
-  it("取消後才付款 → 寄 paid_after_cancel 通知", async () => {
-    const { db, deps } = setup({ gateway: { status: "S", amount: 680 }, targetStatus: "cancelled" });
-    await reconcileOrder(OID, null, deps);
+  it("訂單已取消後才付款 → needs_attention 並通知、不開發票", async () => {
+    const { db, deps } = setup({ gateway: q(15), targetStatus: "cancelled" });
+    const r = await reconcileOrder(OID, "apn_B", deps, { apn: { amount: 680, transId: "t1" } });
+    expect(r.outcome).toBe("needs_attention");
     expect(db.alerts).toEqual(["paid_after_cancel"]);
+    expect(db.invoices).toBe(0);
   });
 
-  it("回查 P → processing（頁面不給重試）", async () => {
-    const { db, deps } = setup({ gateway: { status: "P", amount: 680 } });
-    expect((await reconcileOrder(OID, null, deps)).outcome).toBe("processing");
-    expect(db.checked).toBe("P");
+  it("回查失敗 → 500（APN 重送）", async () => {
+    const { deps } = setup({ gateway: null });
+    expect(await reconcileOrder(OID, "apn_B", deps, { apn: { amount: 680, transId: "t1" } })).toEqual({ http: 500, outcome: "query_failed" });
   });
 
-  it("節流：N 秒內已回查 → throttled（500，不打閘道）", async () => {
-    const { deps } = setup({ gateway: { status: "S", amount: 680 }, claim: false });
-    expect(await reconcileOrder(OID, null, deps, { throttle: true })).toEqual({ http: 500, outcome: "throttled" });
+  it("回查 16（授權失敗）→ failed；23（請款失敗）→ 需人工", async () => {
+    const a = setup({ gateway: q(16) });
+    expect((await reconcileOrder(OID, "cron", a.deps)).outcome).toBe("failed");
+    expect(a.db.paymentStatus).toBe("failed");
+    const b = setup({ gateway: q(23) });
+    expect((await reconcileOrder(OID, "cron", b.deps)).outcome).toBe("needs_attention");
+    expect(b.db.alerts).toEqual(["capture_failed"]);
+  });
+
+  it("非本站單號／查無付款 → unknown_order（200）", async () => {
+    const { deps } = setup({ gateway: q(15) });
+    expect((await reconcileOrder("IB-202600000001", "apn", deps)).outcome).toBe("unknown_order");
+    const n = setup({ gateway: q(15), found: false });
+    expect((await reconcileOrder(OID, "apn", n.deps)).outcome).toBe("unknown_order");
+  });
+
+  it("節流：被節流時回 500 throttled、不回查", async () => {
+    const { deps } = setup({ gateway: q(15), claim: false });
+    expect(await reconcileOrder(OID, "cron", deps, { throttle: true })).toEqual({ http: 500, outcome: "throttled" });
     expect(deps.query).not.toHaveBeenCalled();
   });
-
-  it("不節流時不呼叫 claimCheck；成功回查一定記錄狀態", async () => {
-    const { db, deps } = setup({ gateway: { status: "W", amount: 680 } });
-    await reconcileOrder(OID, null, deps);
-    expect(deps.claimCheck).not.toHaveBeenCalled();
-    expect(db.checked).toBe("W");
-  });
-
-  it("回查失敗不記錄狀態（避免報名被誤釋出）", async () => {
-    const { db, deps } = setup({ gateway: null });
-    await reconcileOrder(OID, null, deps);
-    expect(db.checked).toBeNull();
-  });
 });
 
-describe("raw 白名單 / notify body 去個資", () => {
-  it("只留白名單欄位", () => {
-    const out = sanitizeRaw({
-      order_id: OID, status: "S", amount: "680", items: [{ name: "x" }], buyer_email: "a@b.com", card_last4: "1234",
-      payment_info: { virtual_account: "999", bank_code: "822", payer_name: "王小明" },
-    });
-    expect(out).toEqual({ order_id: OID, status: "S", amount: "680", payment_info: { virtual_account: "999", bank_code: "822" } });
+describe("gatewayBlocksRetry（避免重複扣款）", () => {
+  it("已授權／請款中／請款失敗 → 拒絕重新付款", () => {
+    for (const s of ["15", "20", "21", "22", "23", "P", "S"]) expect(gatewayBlocksRetry(s)).toBe(true);
   });
-  it("redactBody 遮 email 與長數字、截 200 字", () => {
-    const r = redactBody("notify_message=" + JSON.stringify({ email: "someone@example.com", phone: "0912345678" }) + "x".repeat(300));
-    expect(r).not.toContain("someone@example.com");
-    expect(r).not.toContain("0912345678");
-    expect(r.length).toBe(200);
+  it("未付款／失敗 → 可重新付款", () => {
+    for (const s of [null, "", "13", "14", "16", "6"]) expect(gatewayBlocksRetry(s)).toBe(false);
   });
 });
