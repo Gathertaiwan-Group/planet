@@ -504,21 +504,9 @@
       "price_twd": 450
     },
     {
-      "id": 2,
-      "name": "T1 綠鑽",
-      "note": "葉片亮綠，很有精神",
-      "price_twd": 450
-    },
-    {
       "id": 3,
       "name": "T1 觀音蓮",
       "note": "葉脈像星圖",
-      "price_twd": 480
-    },
-    {
-      "id": 4,
-      "name": "T1 拉威雪蓮",
-      "note": "淡淡霜白色",
       "price_twd": 480
     },
     {
@@ -526,18 +514,6 @@
       "name": "T1 小毛氈苔",
       "note": "會抓小蟲的個性派",
       "price_twd": 520
-    },
-    {
-      "id": 6,
-      "name": "T2 粉紅公主",
-      "note": "粉嫩大尺寸",
-      "price_twd": 680
-    },
-    {
-      "id": 7,
-      "name": "T2 正壽",
-      "note": "透亮窗面，大尺寸",
-      "price_twd": 680
     }
   ],
   "kit_price_twd": 280,
