@@ -31,9 +31,9 @@ const FRAMING: Record<string, Framing> = {
   "plants/6.jpg": { x: 50, y: 60, zoom: 1.15, thumbZoom: 1.4 },
   "plants/7.jpg": { x: 49, y: 48, zoom: 1.45, thumbZoom: 1.75 },
   // 水晶版（芯宸官網水晶系列，原圖 1349×1213，燈泡本身就佔畫面大半）
-  "plants/1-crystal.jpg": { x: 50, y: 54, zoom: 1.1, thumbZoom: 1.25 },
-  "plants/3-crystal.jpg": { x: 50, y: 52, zoom: 1.1, thumbZoom: 1.25 },
-  "plants/5-crystal.jpg": { x: 56, y: 46, zoom: 1.15, thumbZoom: 1.35 },
+  "plants/1-crystal.jpg": { x: 50, y: 46, zoom: 1.0, thumbZoom: 1.0 },
+  "plants/3-crystal.jpg": { x: 50, y: 46, zoom: 1.0, thumbZoom: 1.0 },
+  "plants/5-crystal.jpg": { x: 58, y: 40, zoom: 1.0, thumbZoom: 1.0 },
   "products/x1.jpg": { x: 52, y: 52, zoom: 1.0, thumbZoom: 1.05 },
   "products/x2.jpg": { x: 45, y: 50, zoom: 1.0, thumbZoom: 1.0 },
   "products/x3.jpg": { x: 50, y: 50, zoom: 1.0, thumbZoom: 1.0 },
