@@ -36,6 +36,27 @@ export function Header() {
     }
   }, [path, result]);
 
+  // 結帳頁：精簡頁首（Logo＋安全結帳），不放主選單與購物車鈕，減少分心
+  if (path === "/checkout") {
+    return (
+      <header className="hdr" style={sx("position:sticky;top:0;z-index:20;background:rgba(16,22,46,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #2a3358")}>
+        <div className="gutter" style={sx("max-width:1120px;margin:0 auto;padding:12px clamp(16px,4vw,40px);display:flex;align-items:center;justify-content:space-between;gap:16px")}>
+          <Link href="/" aria-label="十二星球 首頁" className="tap" style={sx("display:flex;align-items:center;gap:10px;padding:4px 0;color:#f6f0e1;text-decoration:none")}>
+            <span style={sx("width:26px;height:26px;border-radius:50%;box-shadow:0 0 18px rgba(240,201,110,.5);display:block", { background: LOGO_ORB })} />
+            <span className="wk" style={sx("font-weight:700;font-size:21px")}>十二星球</span>
+          </Link>
+          <span style={sx("display:inline-flex;align-items:center;gap:6px;font-size:14px;color:#9fd8c4;font-weight:500")}>
+            <svg aria-hidden="true" width="14" height="16" viewBox="0 0 14 16" fill="none">
+              <rect x="1" y="7" width="12" height="8" rx="2" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M4 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
+            安全結帳
+          </span>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="hdr" style={sx("position:sticky;top:0;z-index:20;background:rgba(16,22,46,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #2a3358")}>
       <div className="hdr-in gutter" style={sx("max-width:1240px;margin:0 auto;padding:12px clamp(16px,4vw,40px);display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>

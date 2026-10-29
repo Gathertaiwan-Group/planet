@@ -20,8 +20,6 @@ export interface CartItem {
   qty: number;
 }
 
-type Step = "cart" | "form" | "done";
-
 interface State {
   // ---- persisted：{ result, cart, regs } + anonId ----
   /** 測驗結果的星球 id（1–12） */
@@ -34,7 +32,6 @@ interface State {
   // ---- UI ----
   hydrated: boolean;
   cartOpen: boolean;
-  step: Step;
   regEvent: PlanetEvent | null;
   seats: Record<string, number>;
 
@@ -44,7 +41,6 @@ interface State {
   clearCart: () => void;
   openCart: () => void;
   closeCart: () => void;
-  setStep: (s: Step) => void;
   openReg: (e: PlanetEvent) => void;
   closeReg: () => void;
   markRegistered: (slug: string, seatsLeft?: number) => void;
@@ -65,7 +61,6 @@ export const useStore = create<State>()(
       anonId: null,
       hydrated: false,
       cartOpen: false,
-      step: "cart",
       regEvent: null,
       seats: {},
 
@@ -81,9 +76,8 @@ export const useStore = create<State>()(
       setQty: (id, d) =>
         set((s) => ({ cart: s.cart.map((c) => (c.id === id ? { ...c, qty: Math.min(99, c.qty + d) } : c)).filter((c) => c.qty > 0) })),
       clearCart: () => set({ cart: [] }),
-      openCart: () => set({ cartOpen: true, step: "cart" }),
+      openCart: () => set({ cartOpen: true }),
       closeCart: () => set({ cartOpen: false }),
-      setStep: (step) => set({ step }),
       openReg: (e) => set({ regEvent: e }),
       closeReg: () => set({ regEvent: null }),
       markRegistered: (slug, seatsLeft) =>

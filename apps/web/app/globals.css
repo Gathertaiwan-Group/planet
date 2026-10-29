@@ -334,3 +334,84 @@ select.field {
     justify-content: center;
   }
 }
+
+/* ---------- 結帳頁 /checkout ---------- */
+.co-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 32px;
+  align-items: start;
+}
+.co-form {
+  grid-column: 1;
+  grid-row: 1;
+}
+.co-summary {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 88px;
+}
+.co-bar {
+  display: none;
+}
+/* 取貨／付款方式選項卡（整張可點、≥48px 觸控區） */
+.co-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: 1.5px solid #3d4672;
+  border-radius: 14px;
+  background: #10162e;
+  cursor: pointer;
+  color: #f6f0e1;
+}
+.co-opt[data-on] {
+  border-color: #f0c96e;
+  background: rgba(240, 201, 110, 0.08);
+}
+.co-opt input {
+  accent-color: #f0c96e;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.co-opt:has(input:focus-visible) {
+  outline: 2px solid #f0c96e;
+  outline-offset: 2px;
+}
+@keyframes co-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.co-spin {
+  animation: co-spin 0.8s linear infinite;
+}
+@media (max-width: 860px) {
+  .co-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .co-summary,
+  .co-form {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .co-summary {
+    position: static;
+  }
+  .co-bar {
+    display: flex;
+  }
+  .co-submit-inline {
+    display: none !important;
+  }
+  /* 底部固定合計列：頁尾讓出空間 */
+  html[data-co-bar] footer > div {
+    padding-bottom: calc(28px + 84px + var(--safe-b)) !important;
+  }
+}
